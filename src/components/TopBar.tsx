@@ -8,7 +8,7 @@ type TopBarProps = {
 export function TopBar({ sidebarCollapsed = false }: TopBarProps) {
   return (
     <header
-      className={`sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-mystic-mint bg-arctic-powder/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8 ${
+      className={`sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-mystic-mint bg-arctic-powder px-4 sm:px-6 lg:px-8 ${
         sidebarCollapsed ? 'ml-16' : 'ml-60'
       } transition-[margin] duration-200`}
     >
