@@ -57,12 +57,9 @@ export default function App() {
         </section>
 
         <section className="mt-10" aria-labelledby="plan-heading">
-          <h2 id="plan-heading" className="mb-2 text-lg font-semibold tracking-tight text-nocturnal-expedition">
+          <h2 id="plan-heading" className="mb-4 text-lg font-semibold tracking-tight text-nocturnal-expedition">
             Today&apos;s plan
           </h2>
-          <p className="mb-4 text-sm text-oceanic-noir/60">
-            Three scenarios lined up for this session.
-          </p>
           <ol className="m-0 list-none rounded-[16px] border border-mystic-mint bg-white px-4 shadow-[var(--shadow-faint)] sm:px-5">
             {todaysPlan.map((item) => (
               <PlanRow key={item.id} item={item} />
