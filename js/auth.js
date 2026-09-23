@@ -143,13 +143,14 @@
     localStorage.removeItem("ph-player-name");
   }
 
-  function addStars(amount) {
+    function addStars(amount, meta) {
     const user = getCurrentUser();
     if (!user) return null;
     const stars = (user.stars || 0) + amount;
     const history = (user.history || []).slice();
     history.unshift({
-      game: "Star Slash",
+      game: (meta && meta.game) || "Star Slash",
+      gameType: (meta && meta.gameType) || "stars",
       stars: amount,
       at: Date.now(),
     });

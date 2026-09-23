@@ -86,6 +86,15 @@
             <button class="chip" type="button" data-arm="right">Right</button>
             <button class="chip" type="button" data-arm="skip">Prefer not to say</button>
           </div>
+          <div class="pain-scale" id="pain-scale" hidden>
+            <label class="field-label" for="pain-range">How sore does that arm feel today? (1 = fine · 5 = very sore)</label>
+            <div class="pain-row">
+              <span>1</span>
+              <input type="range" id="pain-range" min="1" max="5" step="1" value="3" />
+              <span>5</span>
+              <strong class="pain-value" id="pain-value">3</strong>
+            </div>
+          </div>
           <button class="btn btn-regrade btn-block" id="btn-profile-continue" type="button">Save &amp; continue</button>
           <p class="form-error" id="profile-error"></p>
         </div>
@@ -161,6 +170,17 @@
               <div class="stat-label">Worlds unlocked</div>
             </div>
           </div>
+          <h2 class="subhead">Stars slashed</h2>
+          <div class="journey-chart-card">
+            <div class="journey-chart-head">
+              <div>
+                <strong>Recent Star Slash rounds</strong>
+                <div class="muted" id="chart-subtitle">Play to build your trail</div>
+              </div>
+              <div class="chart-delta" id="chart-delta">✦ 0</div>
+            </div>
+            <svg class="journey-chart" id="stars-chart" viewBox="0 0 320 120" role="img" aria-label="Stars collected over recent sessions"></svg>
+          </div>
           <h2 class="subhead">Unlocked worlds</h2>
           <div class="worlds-row" id="worlds-row"></div>
           <h2 class="subhead">Recent sessions</h2>
@@ -184,12 +204,39 @@
         </div>
       </section>
 
+      <!-- MODE SELECT -->
+      <section class="screen" id="screen-mode" data-screen="mode">
+        <div class="panel soft mode-panel">
+          <button class="text-back" id="btn-mode-back" type="button">← Back</button>
+          <h1>How do you want to play?</h1>
+          <p id="mode-game-label">Pick a mode, then connect to the TV.</p>
+          <div class="mode-grid">
+            <article class="mode-card mode-solo">
+              <div class="mode-card-top solo"></div>
+              <div class="mode-card-body">
+                <h3>Solo</h3>
+                <p>Play at your own pace.</p>
+                <button class="btn btn-regrade btn-block" id="btn-mode-solo" type="button">Play Solo</button>
+              </div>
+            </article>
+            <article class="mode-card mode-multi">
+              <div class="mode-card-top multi"></div>
+              <div class="mode-card-body">
+                <h3>Play with others</h3>
+                <p>Challenge other players.</p>
+                <button class="btn btn-block mode-multi-btn" id="btn-mode-multi" type="button">Play with others</button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <!-- CONNECT (existing game flow) -->
       <section class="screen" id="screen-connect" data-screen="connect">
         <div class="panel soft">
           <button class="text-back" id="btn-connect-back" type="button">← Back</button>
           <h1>Connect to your screen</h1>
-          <p>Open the TV / Game tab and type its 4-character room code.</p>
+          <p id="connect-hint">Open the TV / Game tab and type its 4-character room code.</p>
           <label class="field-label" for="player-name">Your name</label>
           <input class="name-input" id="player-name" maxlength="16" placeholder="Izzy" autocomplete="nickname" />
           <label class="field-label">Room code</label>

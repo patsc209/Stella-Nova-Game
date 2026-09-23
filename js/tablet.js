@@ -6,75 +6,93 @@
       id: "sun",
       name: "Sun",
       game: "Star Slash",
+      gameType: "stars",
       blurb: "Slash rising stars for 30 seconds — first world",
       colour: "#ffb84d",
       playable: true,
       sun: true,
+      tvPage: "game.html",
     },
     {
       id: "mercury",
       name: "Mercury",
-      game: "Star Slash",
-      blurb: "Faster stars near the sun",
+      game: "Orbit Rally",
+      gameType: "orbit",
+      blurb: "Air-hockey with your arms — unlocks after the Sun",
       colour: "#b1b1b1",
       playable: true,
+      tvPage: "orbit.html",
     },
     {
       id: "venus",
       name: "Venus",
-      game: "Star Slash",
-      blurb: "Bright star showers",
+      game: "Orbit Rally",
+      gameType: "orbit",
+      blurb: "Orbit Rally in a brighter arena",
       colour: "#e8c07a",
       playable: true,
+      tvPage: "orbit.html",
     },
     {
       id: "earth",
       name: "Earth",
-      game: "Star Slash",
-      blurb: "Reach across your sky",
+      game: "Orbit Rally",
+      gameType: "orbit",
+      blurb: "Home-world Orbit Rally",
       colour: "#3d8bfd",
       playable: true,
+      tvPage: "orbit.html",
     },
     {
       id: "mars",
       name: "Mars",
-      game: "Star Slash",
-      blurb: "Red-hot star bursts",
+      game: "Orbit Rally",
+      gameType: "orbit",
+      blurb: "Red-planet Orbit Rally",
       colour: "#e07040",
       playable: true,
+      tvPage: "orbit.html",
     },
     {
       id: "jupiter",
       name: "Jupiter",
-      game: "Star Slash",
-      blurb: "Giant star fields",
+      game: "Orbit Rally",
+      gameType: "orbit",
+      blurb: "Giant-world Orbit Rally",
       colour: "#d4a574",
       playable: true,
+      tvPage: "orbit.html",
     },
     {
       id: "saturn",
       name: "Saturn",
-      game: "Star Slash",
-      blurb: "Ringed star paths",
+      game: "Orbit Rally",
+      gameType: "orbit",
+      blurb: "Ringed Orbit Rally",
       colour: "#f0d590",
       playable: true,
       rings: true,
+      tvPage: "orbit.html",
     },
     {
       id: "uranus",
       name: "Uranus",
-      game: "Star Slash",
-      blurb: "Cool drifting stars",
+      game: "Orbit Rally",
+      gameType: "orbit",
+      blurb: "Cool Orbit Rally",
       colour: "#7ec8e3",
       playable: true,
+      tvPage: "orbit.html",
     },
     {
       id: "neptune",
       name: "Neptune",
-      game: "Star Slash",
-      blurb: "Deep-space finale",
+      game: "Orbit Rally",
+      gameType: "orbit",
+      blurb: "Deep-space Orbit Rally finale",
       colour: "#4169e1",
       playable: true,
+      tvPage: "orbit.html",
     },
   ];
 
@@ -128,6 +146,8 @@
   let alienDraft = ReGradeAlien.mergeAlien(null);
   let alienCat = "shape";
   let selectedPlanetId = "sun";
+  let selectedPlayMode = "solo"; // solo | multi
+  let armPain = 3;
   let lastAwardedScore = null;
   let lastUnlockMessage = "";
 
@@ -277,14 +297,23 @@
     const p = PLANETS.find((x) => x.id === id);
     if (!p) return;
     if (!isUnlocked(user, id)) {
+      const order = Auth.WORLD_ORDER || PLANETS.map((x) => x.id);
+      const idx = order.indexOf(id);
+      const prevId = idx > 0 ? order[idx - 1] : null;
+      const prev = PLANETS.find((x) => x.id === prevId);
       showPlanetModal({
         planet: p,
         locked: true,
         title: p.name + " is locked",
-        body:
-          "Worlds unlock in order. Score ✦ " +
-          Auth.UNLOCK_SCORE +
-          "+ stars in one round on your latest unlocked world to open the next planet.",
+        body: prev
+          ? "Score ✦ " +
+            Auth.UNLOCK_SCORE +
+            "+ stars in one round on " +
+            prev.name +
+            " to unlock " +
+            p.name +
+            "."
+          : "Score ✦ " + Auth.UNLOCK_SCORE + "+ stars in a round to unlock new worlds.",
         primaryLabel: "Got it",
         onPrimary: hidePlanetModal,
       });
@@ -339,7 +368,26 @@
   function startPlanetPlay(id) {
     selectedPlanetId = id;
     const user = Auth.getCurrentUser();
+    const world = PLANETS.find((p) => p.id === id);
     document.getElementById("player-name").value = (user && user.name) || "Player";
+    document.getElementById("mode-game-label").textContent = world
+      ? world.game + " on " + world.name + " — pick a mode, then connect to the TV."
+      : "Pick a mode, then connect to the TV.";
+    showScreen("mode");
+  }
+
+  function goToConnect() {
+    const world = PLANETS.find((p) => p.id === selectedPlanetId);
+    const hint = document.getElementById("connect-hint");
+    if (world && world.gameType === "orbit") {
+      hint.textContent =
+        "Open orbit.html on the TV tab, then enter its room code. Mode: " +
+        (selectedPlayMode === "multi" ? "Play with others" : "Solo (AI opponent)");
+    } else {
+      hint.textContent =
+        "Open game.html on the TV tab, then enter its room code. Mode: " +
+        (selectedPlayMode === "multi" ? "Play with others" : "Solo");
+    }
     showScreen("connect");
   }
 
@@ -359,6 +407,8 @@
       </div>`;
     }).join("");
 
+    renderStarsChart(user.history || []);
+
     const list = document.getElementById("history-list");
     const history = user.history || [];
     if (!history.length) {
@@ -372,6 +422,71 @@
         return `<div class="history-row"><div><strong>${h.game}</strong><div class="muted">${when}</div></div><div class="star-chip compact">✦ ${h.stars}</div></div>`;
       })
       .join("");
+  }
+
+  function renderStarsChart(history) {
+    const svg = document.getElementById("stars-chart");
+    const subtitle = document.getElementById("chart-subtitle");
+    const delta = document.getElementById("chart-delta");
+    if (!svg) return;
+
+    const sessions = history
+      .filter((h) => (h.game || "").toLowerCase().includes("star") || !h.gameType || h.gameType === "stars")
+      .slice(0, 7)
+      .reverse();
+
+    // If no star-specific filter matches, fall back to last 7 sessions
+    const points = (sessions.length ? sessions : history.slice(0, 7).reverse()).map((h) => h.stars || 0);
+
+    if (!points.length) {
+      svg.innerHTML =
+        '<text x="160" y="60" text-anchor="middle" fill="#8a93b5" font-size="13">No Star Slash rounds yet</text>';
+      subtitle.textContent = "Play the Sun to start your trail";
+      delta.textContent = "✦ 0";
+      return;
+    }
+
+    const w = 320;
+    const h = 120;
+    const padL = 18;
+    const padR = 18;
+    const padT = 18;
+    const padB = 28;
+    const maxV = Math.max(10, ...points);
+    const stepX = points.length === 1 ? 0 : (w - padL - padR) / (points.length - 1);
+    const coords = points.map((v, i) => {
+      const x = padL + i * stepX;
+      const y = padT + (1 - v / maxV) * (h - padT - padB);
+      return { x, y, v };
+    });
+
+    const polyline = coords.map((c) => c.x + "," + c.y).join(" ");
+    const dots = coords
+      .map((c, i) => {
+        const big = i === coords.length - 1;
+        return `<circle cx="${c.x}" cy="${c.y}" r="${big ? 7 : 4}" fill="#5b8cff"/>`;
+      })
+      .join("");
+    const labels = coords
+      .map((c, i) => {
+        const label = i === coords.length - 1 ? "Today" : "R" + (i + 1);
+        return `<text x="${c.x}" y="${h - 8}" text-anchor="middle" fill="#8a93b5" font-size="11">${label}</text>`;
+      })
+      .join("");
+
+    svg.innerHTML =
+      `<polyline fill="none" stroke="#5b8cff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" points="${polyline}"/>` +
+      dots +
+      labels;
+
+    const last = points[points.length - 1];
+    const prev = points.length > 1 ? points[points.length - 2] : 0;
+    const diff = last - prev;
+    delta.textContent = "✦ " + last;
+    subtitle.textContent =
+      points.length > 1
+        ? (diff >= 0 ? "+" : "") + diff + " vs previous round"
+        : "First recorded round";
   }
 
   function renderAlienCreator() {
@@ -465,8 +580,22 @@
       document.querySelectorAll("#arm-chips .chip").forEach((c) => c.classList.remove("active"));
       chip.classList.add("active");
       armPreference = chip.dataset.arm;
+      const pain = document.getElementById("pain-scale");
+      if (armPreference === "left" || armPreference === "right") {
+        pain.hidden = false;
+      } else {
+        pain.hidden = true;
+      }
     });
   });
+
+  const painRange = document.getElementById("pain-range");
+  if (painRange) {
+    painRange.addEventListener("input", () => {
+      armPain = Number(painRange.value);
+      document.getElementById("pain-value").textContent = String(armPain);
+    });
+  }
 
   document.getElementById("btn-profile-continue").addEventListener("click", () => {
     const err = document.getElementById("profile-error");
@@ -476,7 +605,12 @@
       err.textContent = "Tell us what to call you.";
       return;
     }
-    Auth.updateCurrentUser({ name, armPreference, onboardedProfile: true });
+    Auth.updateCurrentUser({
+      name,
+      armPreference,
+      armPain: armPreference === "left" || armPreference === "right" ? armPain : null,
+      onboardedProfile: true,
+    });
     alienDraft = ReGradeAlien.mergeAlien(Auth.getCurrentUser().alien);
     renderAlienCreator();
     showScreen("alien");
@@ -548,8 +682,22 @@
   });
 
   document.getElementById("btn-connect-back").addEventListener("click", () => {
+    showScreen("mode");
+  });
+
+  document.getElementById("btn-mode-back").addEventListener("click", () => {
     renderExplore();
     showScreen("explore");
+  });
+
+  document.getElementById("btn-mode-solo").addEventListener("click", () => {
+    selectedPlayMode = "solo";
+    goToConnect();
+  });
+
+  document.getElementById("btn-mode-multi").addEventListener("click", () => {
+    selectedPlayMode = "multi";
+    goToConnect();
   });
 
   function getRoomFromInputs() {
@@ -581,20 +729,34 @@
 
   function applyState(state) {
     if (!state) return;
-    const score = state.score || 0;
-    const timeLeft = typeof state.timeLeft === "number" ? state.timeLeft : 30;
+    const world = PLANETS.find((p) => p.id === selectedPlanetId);
+    const isOrbit = (state.gameType || (world && world.gameType)) === "orbit";
+    const score = typeof state.score === "number" ? state.score : 0;
+    const timeLeft = typeof state.timeLeft === "number" ? state.timeLeft : isOrbit ? 60 : 30;
     const liveTitle = document.getElementById("live-title");
-    document.getElementById("live-score").textContent = String(score);
+
+    if (isOrbit && typeof state.scoreA === "number") {
+      document.getElementById("live-score").textContent = state.scoreA + " — " + (state.scoreB || 0);
+    } else {
+      document.getElementById("live-score").textContent = "✦ " + String(score);
+    }
+
     document.getElementById("live-timer").textContent = timeLeft + "s left";
-    document.getElementById("results-score").textContent = String(score);
+    document.getElementById("results-score").textContent = isOrbit
+      ? (state.scoreA || 0) + " — " + (state.scoreB || 0)
+      : "✦ " + String(score);
 
     if (state.phase === "countdown") {
       showScreen("live");
-      liveTitle.textContent = "Get ready… " + (state.countdown || 3);
+      liveTitle.textContent = isOrbit
+        ? "Orbit Rally get ready…"
+        : "Get ready… " + (state.countdown || 3);
       setConnected(true, "Room " + room);
     } else if (state.phase === "playing") {
       showScreen("live");
-      liveTitle.textContent = "You’re playing on TV. Look up and slash stars!";
+      liveTitle.textContent = isOrbit
+        ? "Orbit Rally on TV — move your arms!"
+        : "You’re playing on TV. Look up and slash stars!";
       setConnected(true, "Live · " + room);
     } else if (state.phase === "paused") {
       showScreen("paused");
@@ -602,27 +764,33 @@
     } else if (state.phase === "over") {
       if (lastAwardedScore !== score) {
         lastAwardedScore = score;
-        Auth.addStars(score);
-        const progress = Auth.applyRoundProgress(selectedPlanetId, score);
-        const world = PLANETS.find((p) => p.id === selectedPlanetId);
-        document.getElementById("results-blurb").textContent =
-          "You collected " + score + " stars" + (world ? " on " + world.name : "") + "!";
+        const starsEarned = isOrbit ? Math.max(0, state.scoreA || score) : score;
+        Auth.addStars(starsEarned, {
+          game: world ? world.game : isOrbit ? "Orbit Rally" : "Star Slash",
+          gameType: world ? world.gameType : isOrbit ? "orbit" : "stars",
+        });
+        const progress = Auth.applyRoundProgress(selectedPlanetId, starsEarned);
+        document.getElementById("results-blurb").textContent = isOrbit
+          ? "Orbit Rally finished — ✦ " + starsEarned + " credited" + (world ? " on " + world.name : "") + "!"
+          : "You collected " + score + " stars" + (world ? " on " + world.name : "") + "!";
 
         const unlockEl = document.getElementById("results-unlock");
         if (progress && progress.unlockedId) {
           const next = PLANETS.find((p) => p.id === progress.unlockedId);
-          lastUnlockMessage = next ? "New world unlocked: " + next.name + "!" : "";
+          lastUnlockMessage = next
+            ? "New world unlocked: " + next.name + " (" + next.game + ")!"
+            : "";
           unlockEl.textContent = lastUnlockMessage;
           unlockEl.hidden = false;
-        } else if (score < Auth.UNLOCK_SCORE) {
+        } else if (starsEarned < Auth.UNLOCK_SCORE) {
           unlockEl.textContent =
-            "Score " + Auth.UNLOCK_SCORE + "+ stars in one round to unlock the next world.";
+            "Score ✦ " + Auth.UNLOCK_SCORE + "+ in one round to unlock the next world.";
           unlockEl.hidden = false;
         } else {
           unlockEl.hidden = true;
         }
         document.getElementById("results-meta").textContent =
-          "Need " + Auth.UNLOCK_SCORE + "+ in a round to unlock the next planet.";
+          "Need ✦ " + Auth.UNLOCK_SCORE + "+ in a round to unlock the next planet.";
       }
       showScreen("results");
       setConnected(true, "Done · " + room);
@@ -658,7 +826,13 @@
 
     const existing = sync.getState();
     setConnected(!!(existing && existing.hostReady), existing && existing.hostReady ? "Connected · " + room : "Looking for TV…");
-    sync.publish({ tabletReady: true, playerName: name });
+    sync.publish({
+      tabletReady: true,
+      playerName: name,
+      playMode: selectedPlayMode,
+      gameType: (PLANETS.find((p) => p.id === selectedPlanetId) || {}).gameType || "stars",
+      worldId: selectedPlanetId,
+    });
     sync.on((msg) => {
       if (msg.type === "state" && msg.state) applyState(msg.state);
       if (msg.type === "hello" && msg.role === "game") setConnected(true, "TV ready · " + room);
