@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Stella Nova — Tablet</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -126,9 +127,14 @@
             <div class="star-chip" id="star-chip">✦ <span id="star-count">0</span></div>
           </div>
           <div class="solar-stage" id="solar-stage"></div>
-          <div class="home-alien" id="home-alien"></div>
-          <p class="home-caption" id="home-caption">Collect stars and explore new worlds.</p>
-          <button class="btn btn-regrade btn-block" id="btn-explore" type="button">Explore</button>
+          <div class="home-side">
+            <div class="home-alien" id="home-alien"></div>
+            <p class="home-caption" id="home-caption">Collect stars and explore new worlds.</p>
+            <button class="btn btn-regrade btn-block" id="btn-explore" type="button">Explore</button>
+          </div>
+          <div class="home-tip-wrap">
+            <p class="home-tip" id="home-tip">Grey worlds are locked — tap one to see how to unlock it. Score ✦ 12+ in a round to open the next planet.</p>
+          </div>
         </div>
       </section>
 
@@ -143,12 +149,20 @@
 
       <!-- STATS -->
       <section class="screen" id="screen-stats" data-screen="stats">
-        <div class="panel soft">
+        <div class="panel soft stats-panel">
           <h1>Your journey</h1>
           <div class="stat-grid">
-            <div class="stat-card"><div class="stat-num" id="stat-stars">0</div><div class="stat-label">Stars</div></div>
-            <div class="stat-card"><div class="stat-num" id="stat-planets">1</div><div class="stat-label">Planets</div></div>
+            <div class="stat-card">
+              <div class="stat-num" id="stat-stars">✦ 0</div>
+              <div class="stat-label">Total stars collected</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num" id="stat-planets">1</div>
+              <div class="stat-label">Worlds unlocked</div>
+            </div>
           </div>
+          <h2 class="subhead">Unlocked worlds</h2>
+          <div class="worlds-row" id="worlds-row"></div>
           <h2 class="subhead">Recent sessions</h2>
           <div class="history-list" id="history-list"></div>
         </div>
@@ -227,6 +241,20 @@
           </div>
         </div>
       </section>
+
+      <!-- PLANET / UNLOCK MODAL -->
+      <div class="modal" id="planet-modal" hidden>
+        <div class="modal-backdrop" id="planet-modal-backdrop"></div>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+          <div class="modal-orb" id="modal-orb"></div>
+          <h2 id="modal-title">World</h2>
+          <p id="modal-body">Info</p>
+          <div class="stack">
+            <button class="btn btn-regrade btn-block" id="modal-primary" type="button">Got it</button>
+            <button class="btn btn-ghost btn-block" id="modal-secondary" type="button" hidden>Cancel</button>
+          </div>
+        </div>
+      </div>
 
       <!-- BOTTOM NAV -->
       <nav class="bottom-nav" id="bottom-nav" hidden>

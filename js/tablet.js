@@ -240,23 +240,35 @@
     cards.innerHTML = PLANETS.map((p) => {
       const open = isUnlocked(user, p.id);
       return `
-        <article class="planet-card ${open ? "" : "is-locked"}">
+        <article class="planet-card ${open ? "" : "is-locked"}" data-planet="${p.id}">
           <div class="planet-orb ${p.rings ? "rings" : ""} ${p.sun ? "is-sun" : ""}" style="--p:${p.colour}"></div>
           <div class="planet-card-body">
             <h3>${open ? p.name : "???"}</h3>
             <p class="game-name">${open ? p.game : "A new world awaits"}</p>
-            <p>${open ? p.blurb : "Score " + Auth.UNLOCK_SCORE + "+ stars in the previous world to unlock"}</p>
+            <p>${open ? p.blurb : "Coming soon — tap to learn how to unlock"}</p>
             ${
               open && p.playable
                 ? `<button class="btn btn-regrade btn-block planet-play" type="button" data-play="${p.id}">Play</button>`
-                : `<button class="btn btn-ghost btn-block" type="button" disabled>Locked</button>`
+                : `<button class="btn btn-ghost btn-block planet-locked-info" type="button" data-locked="${p.id}">Why locked?</button>`
             }
           </div>
         </article>`;
     }).join("");
 
     cards.querySelectorAll("[data-play]").forEach((btn) => {
-      btn.addEventListener("click", () => startPlanetPlay(btn.dataset.play));
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openPlanet(btn.dataset.play);
+      });
+    });
+    cards.querySelectorAll("[data-locked]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openPlanet(btn.dataset.locked);
+      });
+    });
+    cards.querySelectorAll(".planet-card").forEach((card) => {
+      card.addEventListener("click", () => openPlanet(card.dataset.planet));
     });
   }
 
@@ -264,12 +276,64 @@
     const user = Auth.getCurrentUser();
     const p = PLANETS.find((x) => x.id === id);
     if (!p) return;
-    if (!isUnlocked(user, id) || !p.playable) {
-      renderExplore();
-      showScreen("explore");
+    if (!isUnlocked(user, id)) {
+      showPlanetModal({
+        planet: p,
+        locked: true,
+        title: p.name + " is locked",
+        body:
+          "Worlds unlock in order. Score ✦ " +
+          Auth.UNLOCK_SCORE +
+          "+ stars in one round on your latest unlocked world to open the next planet.",
+        primaryLabel: "Got it",
+        onPrimary: hidePlanetModal,
+      });
       return;
     }
-    startPlanetPlay(id);
+    showPlanetModal({
+      planet: p,
+      locked: false,
+      title: "Play " + p.name + "?",
+      body: p.blurb + " You’ll connect to the TV with a room code, then slash rising stars.",
+      primaryLabel: "Play Star Slash",
+      secondaryLabel: "Not now",
+      onPrimary: () => {
+        hidePlanetModal();
+        startPlanetPlay(id);
+      },
+      onSecondary: hidePlanetModal,
+    });
+  }
+
+  let modalAction = null;
+  let modalSecondaryAction = null;
+
+  function showPlanetModal({ planet, locked, title, body, primaryLabel, secondaryLabel, onPrimary, onSecondary }) {
+    const modal = document.getElementById("planet-modal");
+    const orb = document.getElementById("modal-orb");
+    const primary = document.getElementById("modal-primary");
+    const secondary = document.getElementById("modal-secondary");
+    document.getElementById("modal-title").textContent = title;
+    document.getElementById("modal-body").textContent = body;
+    orb.style.setProperty("--p", planet.colour);
+    orb.classList.toggle("locked", !!locked);
+    primary.textContent = primaryLabel || "Got it";
+    modalAction = onPrimary || hidePlanetModal;
+    if (secondaryLabel) {
+      secondary.hidden = false;
+      secondary.textContent = secondaryLabel;
+      modalSecondaryAction = onSecondary || hidePlanetModal;
+    } else {
+      secondary.hidden = true;
+      modalSecondaryAction = null;
+    }
+    modal.hidden = false;
+  }
+
+  function hidePlanetModal() {
+    document.getElementById("planet-modal").hidden = true;
+    modalAction = null;
+    modalSecondaryAction = null;
   }
 
   function startPlanetPlay(id) {
@@ -282,8 +346,19 @@
   function renderStats() {
     const user = Auth.getCurrentUser();
     if (!user) return;
-    document.getElementById("stat-stars").textContent = String(user.stars || 0);
-    document.getElementById("stat-planets").textContent = String((user.unlockedPlanets || ["sun"]).length);
+    const unlocked = user.unlockedPlanets || ["sun"];
+    document.getElementById("stat-stars").textContent = "✦ " + String(user.stars || 0);
+    document.getElementById("stat-planets").textContent = String(unlocked.length);
+
+    const worldsRow = document.getElementById("worlds-row");
+    worldsRow.innerHTML = PLANETS.map((p) => {
+      const open = unlocked.includes(p.id);
+      return `<div class="world-chip ${open ? "" : "locked-chip"}" title="${p.name}">
+        <span class="mini-orb" style="--p:${p.colour}"></span>
+        <span>${open ? p.name : "Locked"}</span>
+      </div>`;
+    }).join("");
+
     const list = document.getElementById("history-list");
     const history = user.history || [];
     if (!history.length) {
@@ -627,5 +702,16 @@
 
   wireRoomInputs();
   refreshWelcomeMascot();
+
+  document.getElementById("modal-primary").addEventListener("click", () => {
+    if (typeof modalAction === "function") modalAction();
+    else hidePlanetModal();
+  });
+  document.getElementById("modal-secondary").addEventListener("click", () => {
+    if (typeof modalSecondaryAction === "function") modalSecondaryAction();
+    else hidePlanetModal();
+  });
+  document.getElementById("planet-modal-backdrop").addEventListener("click", hidePlanetModal);
+
   routeFromAuth();
 })();
