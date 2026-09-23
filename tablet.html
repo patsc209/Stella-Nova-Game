@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Planet Hockey — Tablet</title>
+    <title>ReGrade — Tablet</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,37 +12,170 @@
     />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
-  <body class="tablet-body">
-    <div class="tablet-shell">
-      <header class="tablet-top">
-        <div class="tablet-brand">Planet Hockey</div>
+  <body class="tablet-body regrade">
+    <div class="tablet-shell has-nav" id="tablet-shell">
+      <header class="tablet-top" id="app-topbar">
+        <div class="tablet-brand">ReGrade <span class="star-mark">✦</span></div>
         <div class="pill">
           <span class="conn-dot" id="conn-dot"></span>
           <span id="conn-label">Not connected</span>
         </div>
       </header>
 
-      <!-- HOME -->
-      <section class="screen active" id="screen-home" data-screen="home">
-        <div class="hero-panel">
-          <p class="eyebrow">Ready?</p>
-          <h1>Planet Hockey</h1>
-          <p>Upper-body slash session. Pop planets for points — 30 seconds.</p>
-          <div class="streak" aria-hidden="true">🔥 Your streak · 4 days</div>
-          <button class="btn btn-primary btn-block" id="btn-go-connect" type="button">PLAY</button>
+      <!-- WELCOME -->
+      <section class="screen active" id="screen-welcome" data-screen="welcome">
+        <div class="welcome-hero">
+          <p class="brand-lg">ReGrade <span class="star-mark">✦</span></p>
+          <p class="tag-soft">Play · Explore · Your Universe</p>
+          <div class="mascot-wrap" id="welcome-mascot"></div>
+          <div class="stack welcome-actions">
+            <button class="btn btn-regrade btn-block" id="btn-goto-login" type="button">Log in</button>
+            <button class="btn btn-outline btn-block" id="btn-goto-signup" type="button">Create account</button>
+          </div>
         </div>
-        <p class="nav-hint">Open the TV game in another tab first, then connect here.</p>
       </section>
 
-      <!-- CONNECT -->
-      <section class="screen" id="screen-connect" data-screen="connect">
-        <div class="panel">
-          <h1>Connect to your screen</h1>
-          <p>Type the 4-character code shown on the TV / game tab.</p>
+      <!-- LOGIN -->
+      <section class="screen" id="screen-login" data-screen="login">
+        <div class="panel soft">
+          <button class="text-back" id="btn-login-back" type="button">← Back</button>
+          <h1>Welcome back!</h1>
+          <p>Good to see you again.</p>
+          <label class="field-label" for="login-id">Email or phone number</label>
+          <input class="name-input" id="login-id" autocomplete="username" placeholder="you@email.com" />
+          <label class="field-label" for="login-pass">Password</label>
+          <input class="name-input" id="login-pass" type="password" autocomplete="current-password" placeholder="••••••••" />
+          <div class="stack">
+            <button class="btn btn-regrade btn-block" id="btn-login" type="button">Log in</button>
+            <button class="btn btn-ghost btn-block" id="btn-login-to-signup" type="button">Create an account</button>
+          </div>
+          <p class="form-error" id="login-error"></p>
+        </div>
+      </section>
 
+      <!-- SIGNUP -->
+      <section class="screen" id="screen-signup" data-screen="signup">
+        <div class="panel soft">
+          <button class="text-back" id="btn-signup-back" type="button">← Back</button>
+          <h1>Create account</h1>
+          <p>Start your little universe.</p>
+          <label class="field-label" for="signup-id">Email or phone number</label>
+          <input class="name-input" id="signup-id" autocomplete="username" placeholder="you@email.com" />
+          <label class="field-label" for="signup-pass">Password</label>
+          <input class="name-input" id="signup-pass" type="password" autocomplete="new-password" placeholder="At least 4 characters" />
+          <div class="stack">
+            <button class="btn btn-regrade btn-block" id="btn-signup" type="button">Continue</button>
+            <button class="btn btn-ghost btn-block" id="btn-signup-to-login" type="button">I already have an account</button>
+          </div>
+          <p class="form-error" id="signup-error"></p>
+        </div>
+      </section>
+
+      <!-- PROFILE / MAKE IT YOURS -->
+      <section class="screen" id="screen-profile" data-screen="profile">
+        <div class="panel soft">
+          <h1>Make it yours</h1>
+          <p>Quick profile before your alien arrives.</p>
+          <div class="avatar-placeholder" id="profile-avatar-preview"></div>
+          <label class="field-label" for="profile-name">What should we call you?</label>
+          <input class="name-input" id="profile-name" maxlength="16" placeholder="Izzy" />
+          <p class="field-label">Which arm feels easier today? (optional)</p>
+          <div class="chip-row" id="arm-chips">
+            <button class="chip" type="button" data-arm="left">Left</button>
+            <button class="chip" type="button" data-arm="right">Right</button>
+            <button class="chip" type="button" data-arm="skip">Prefer not to say</button>
+          </div>
+          <button class="btn btn-regrade btn-block" id="btn-profile-continue" type="button">Save &amp; continue</button>
+          <p class="form-error" id="profile-error"></p>
+        </div>
+      </section>
+
+      <!-- ALIEN CREATOR -->
+      <section class="screen" id="screen-alien" data-screen="alien">
+        <div class="alien-creator">
+          <div class="alien-creator-top">
+            <h1>Create your alien</h1>
+            <p>This buddy lives on your home screen.</p>
+          </div>
+          <div class="alien-layout">
+            <div class="alien-cats" id="alien-cats">
+              <button class="cat active" type="button" data-cat="shape">Shape</button>
+              <button class="cat" type="button" data-cat="antenna">Antenna</button>
+              <button class="cat" type="button" data-cat="eyes">Eyes</button>
+              <button class="cat" type="button" data-cat="spots">Spots</button>
+              <button class="cat" type="button" data-cat="colour">Colour</button>
+            </div>
+            <div class="alien-preview-wrap">
+              <div class="alien-preview" id="alien-preview"></div>
+            </div>
+            <div class="alien-presets" id="alien-presets"></div>
+          </div>
+          <div class="alien-options" id="alien-options"></div>
+          <button class="btn btn-regrade btn-block" id="btn-alien-save" type="button">Save</button>
+        </div>
+      </section>
+
+      <!-- HOME / SOLAR SYSTEM -->
+      <section class="screen" id="screen-home" data-screen="home">
+        <div class="universe-home">
+          <div class="universe-top">
+            <div>
+              <p class="eyebrow" id="home-greeting">Hey explorer</p>
+              <h1 id="home-title">Your universe is waiting…</h1>
+            </div>
+            <div class="star-chip" id="star-chip">✦ <span id="star-count">0</span></div>
+          </div>
+          <div class="solar-stage" id="solar-stage"></div>
+          <div class="home-alien" id="home-alien"></div>
+          <p class="home-caption" id="home-caption">Collect stars and explore new worlds.</p>
+          <button class="btn btn-regrade btn-block" id="btn-explore" type="button">Explore</button>
+        </div>
+      </section>
+
+      <!-- EXPLORE / PLANETS -->
+      <section class="screen" id="screen-explore" data-screen="explore">
+        <div class="panel soft explore-panel">
+          <h1>Choose a world</h1>
+          <p>Each planet is a different upper-body game.</p>
+          <div class="planet-cards" id="planet-cards"></div>
+        </div>
+      </section>
+
+      <!-- STATS -->
+      <section class="screen" id="screen-stats" data-screen="stats">
+        <div class="panel soft">
+          <h1>Your journey</h1>
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-num" id="stat-stars">0</div><div class="stat-label">Stars</div></div>
+            <div class="stat-card"><div class="stat-num" id="stat-planets">1</div><div class="stat-label">Planets</div></div>
+          </div>
+          <h2 class="subhead">Recent sessions</h2>
+          <div class="history-list" id="history-list"></div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="screen" id="screen-settings" data-screen="settings">
+        <div class="panel soft">
+          <h1>Settings</h1>
+          <div class="settings-list">
+            <button class="settings-row" id="btn-edit-alien" type="button"><span>Alien design</span><span>›</span></button>
+            <button class="settings-row" id="btn-edit-profile" type="button"><span>Account</span><span>›</span></button>
+            <div class="settings-row static"><span>Accessibility</span><span class="muted">Prototype</span></div>
+            <div class="settings-row static"><span>Sound</span><span class="muted">On</span></div>
+            <button class="settings-row danger" id="btn-logout" type="button"><span>Log out</span><span>›</span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONNECT (existing game flow) -->
+      <section class="screen" id="screen-connect" data-screen="connect">
+        <div class="panel soft">
+          <button class="text-back" id="btn-connect-back" type="button">← Back</button>
+          <h1>Connect to your screen</h1>
+          <p>Open the TV / Game tab and type its 4-character room code.</p>
           <label class="field-label" for="player-name">Your name</label>
           <input class="name-input" id="player-name" maxlength="16" placeholder="Izzy" autocomplete="nickname" />
-
           <label class="field-label">Room code</label>
           <div class="room-inputs" id="room-inputs">
             <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 1" />
@@ -50,16 +183,14 @@
             <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 3" />
             <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 4" />
           </div>
-
           <div class="stack">
             <button class="btn btn-accent btn-block" id="btn-connect" type="button">Join &amp; start</button>
-            <button class="btn btn-ghost btn-block" id="btn-back-home" type="button">Back</button>
           </div>
-          <p class="nav-hint" id="connect-error" style="color: #d64545"></p>
+          <p class="form-error" id="connect-error"></p>
         </div>
       </section>
 
-      <!-- LIVE / PLAYING -->
+      <!-- LIVE -->
       <section class="screen" id="screen-live" data-screen="live">
         <div class="live-card">
           <div class="orbit" aria-hidden="true"></div>
@@ -81,31 +212,38 @@
 
       <!-- RESULTS -->
       <section class="screen" id="screen-results" data-screen="results">
-        <div class="panel" style="flex: 1">
+        <div class="panel soft" style="flex: 1">
           <h1>Nice work!</h1>
-          <p id="results-blurb">Session complete — great upper-body effort.</p>
-          <svg class="chart" viewBox="0 0 320 90" aria-hidden="true">
-            <polyline
-              fill="none"
-              stroke="#5b8cff"
-              stroke-width="4"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              points="10,70 55,62 100,48 145,52 190,30 235,36 280,18 310,22"
-            />
-            <circle cx="310" cy="22" r="6" fill="#ff7a59" />
-          </svg>
+          <p id="results-blurb">You collected stars!</p>
           <div class="results-score" id="results-score">0</div>
-          <div class="results-meta" id="results-meta">Your best: 0</div>
+          <div class="results-meta" id="results-meta">Stars earned this round: 0</div>
           <div class="stack">
             <button class="btn btn-accent btn-block" id="btn-play-again" type="button">Play again</button>
             <button class="btn btn-ghost btn-block" id="btn-results-home" type="button">Back to Home</button>
           </div>
         </div>
       </section>
+
+      <!-- BOTTOM NAV -->
+      <nav class="bottom-nav" id="bottom-nav" hidden>
+        <button class="nav-item active" type="button" data-nav="home">
+          <span class="nav-ico">⌂</span><span>Home</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="explore">
+          <span class="nav-ico">◎</span><span>Explore</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="stats">
+          <span class="nav-ico">▥</span><span>Stats</span>
+        </button>
+        <button class="nav-item" type="button" data-nav="settings">
+          <span class="nav-ico">⚙</span><span>Settings</span>
+        </button>
+      </nav>
     </div>
 
     <script src="js/sync.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/alien.js"></script>
     <script src="js/tablet.js"></script>
   </body>
 </html>
