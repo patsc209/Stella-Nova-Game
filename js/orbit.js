@@ -14,7 +14,7 @@ let poseNet;
 let poses = [];
 
 // ---- Match settings ----
-const MATCH_SECONDS = 60;
+const MATCH_SECONDS = 90;
 const PADDLE_R = 42;
 const PUCK_R = 15;
 const CONFIDENCE = 0.2;
@@ -217,17 +217,14 @@ function modelReady() {
 function draw() {
   background(5, 6, 18);
 
+  // Mirrored full-bleed feed — same coordinate space as PoseNet tracking
+  // (updated Orbit sketch fix for big-screen / farther distance).
   push();
   translate(width, 0);
   scale(-1, 1);
   if (video) {
-    const vw = video.width || width;
-    const vh = video.height || height;
-    const scaleFit = Math.max(width / vw, height / vh);
-    const dw = vw * scaleFit;
-    const dh = vh * scaleFit;
     tint(255, 140);
-    image(video, (width - dw) / 2, (height - dh) / 2, dw, dh);
+    image(video, 0, 0, width, height);
     noTint();
   }
   pop();
@@ -419,10 +416,24 @@ function drawCountdown() {
 }
 
 // ---- Hand tracking ----
+function videoScale() {
+  // PoseNet points live in the video element's size; rescale into canvas
+  // coords so a full arm reach maps across a big TV after resize/fullscreen.
+  return {
+    x: width / Math.max(1, video.width),
+    y: height / Math.max(1, video.height),
+  };
+}
+
+function mapVideoPoint(vx, vy) {
+  const s = videoScale();
+  return { x: width - vx * s.x, y: vy * s.y };
+}
+
 function getMirroredKeypoint(pose, partName) {
   let kp = pose.pose.keypoints.find(k => k.part === partName);
   if (kp && kp.score > CONFIDENCE) {
-    return { x: width - kp.position.x, y: kp.position.y };
+    return mapVideoPoint(kp.position.x, kp.position.y);
   }
   return null;
 }
@@ -454,13 +465,26 @@ function getHandPoint(pose, paddle) {
 
   let kp = paddle.lockedHand === 'right' ? rw : lw;
   if (kp && kp.score > CONFIDENCE) {
-    return { x: width - kp.position.x, y: kp.position.y };
+    return mapVideoPoint(kp.position.x, kp.position.y);
   }
 
   // locked hand briefly lost — fall back to the other one rather than freezing
   let altKp = paddle.lockedHand === 'right' ? lw : rw;
   if (altKp && altKp.score > CONFIDENCE) {
-    return { x: width - altKp.position.x, y: altKp.position.y };
+    return mapVideoPoint(altKp.position.x, altKp.position.y);
+  }
+
+  // Far-distance fallback: extend from elbow when wrist confidence dips
+  const side = paddle.lockedHand || (rConf >= lConf ? 'right' : 'left');
+  const elbow = pose.pose.keypoints.find(k => k.part === side + 'Elbow');
+  const shoulder = pose.pose.keypoints.find(k => k.part === side + 'Shoulder');
+  if (elbow && shoulder && elbow.score > CONFIDENCE && shoulder.score > CONFIDENCE) {
+    const e = mapVideoPoint(elbow.position.x, elbow.position.y);
+    const s = mapVideoPoint(shoulder.position.x, shoulder.position.y);
+    return {
+      x: e.x + (e.x - s.x) * 0.9,
+      y: e.y + (e.y - s.y) * 0.9,
+    };
   }
   return null;
 }
@@ -474,14 +498,14 @@ function smoothPoint(paddle, rawPoint) {
 }
 
 function updatePaddles() {
-  // Sort by MIRRORED nose x (width - raw x) so the sort matches what's actually
-  // on screen — sorting on raw video x would put the physically-right-side
-  // player on the left paddle, since the video itself is drawn mirrored.
+  // Sort by MIRRORED nose x so the sort matches what's actually on screen —
+  // sorting on raw video x would put the physically-right-side player on the
+  // left paddle, since the video itself is drawn mirrored.
   let sorted = [...poses].sort((p1, p2) => {
     let n1 = p1.pose.keypoints.find(k => k.part === 'nose');
     let n2 = p2.pose.keypoints.find(k => k.part === 'nose');
-    let x1 = n1 ? width - n1.position.x : 0;
-    let x2 = n2 ? width - n2.position.x : 0;
+    let x1 = n1 ? mapVideoPoint(n1.position.x, n1.position.y).x : 0;
+    let x2 = n2 ? mapVideoPoint(n2.position.x, n2.position.y).x : 0;
     return x1 - x2;
   });
 

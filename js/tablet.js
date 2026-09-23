@@ -765,7 +765,7 @@
     const world = PLANETS.find((p) => p.id === selectedPlanetId);
     const isOrbit = (state.gameType || (world && world.gameType)) === "orbit";
     const score = typeof state.score === "number" ? state.score : 0;
-    const timeLeft = typeof state.timeLeft === "number" ? state.timeLeft : isOrbit ? 60 : 30;
+    const timeLeft = typeof state.timeLeft === "number" ? state.timeLeft : isOrbit ? 90 : 30;
     const liveTitle = document.getElementById("live-title");
 
     if (isOrbit && typeof state.scoreA === "number") {
