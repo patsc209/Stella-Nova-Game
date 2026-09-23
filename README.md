@@ -1,21 +1,21 @@
 # Stella Nova
 
-Upper-body rehab class prototype: create an alien, explore a solar-system home, then slash **stars** on the TV with PoseNet (30 seconds).
+Upper-body rehab class prototype for a user-testing fair.
 
-## Fair / user testing
-- Accounts are local only (`localStorage`) — no backend
-- After a round: **Continue (same tester)** or **Reset for next tester**
-- Settings also has **Clear all demo data**
+## Games
+- **Star Slash** (`game.html`) — Sun world; slash rising stars (30s)
+- **Orbit Rally** (`orbit.html`) — Mercury→Neptune once unlocked; arm air-hockey (solo AI or 2-player)
+
+## Tablet flow
+Login → profile (+ optional arm + pain 1–5) → alien → solar home → Explore → **Solo / Play with others** → room code → live/pause → results
 
 ## Progression
-- Only the **Sun** starts unlocked
-- Score **12+ stars** in a finished round to unlock the next world (Mercury → … → Neptune)
-- Picking a world still uses the room-code → TV play flow
+Only the **Sun** starts unlocked. Score **✦ 12+** in a finished round to unlock the next world (Orbit Rally).
+
+## Fair testing
+Local `localStorage` only. Results/Settings: **Continue** or **Reset for next tester**.
 
 ## Run
 ```bash
 python3 -m http.server 8080
 ```
-- Landing: http://localhost:8080/
-- Tablet: http://localhost:8080/tablet.html
-- TV: http://localhost:8080/game.html
