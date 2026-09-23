@@ -1,37 +1,27 @@
-# Planet Hockey
+# ReGrade · Planet Hockey
 
-High-fidelity class prototype for an upper-body rehab game: slash floating solar-system planets with your arms (PoseNet wrist tracking). Sessions last **30 seconds**.
+Class prototype for upper-body rehab play.
 
 ## Screens
 
-1. **TV / Game** (`game.html`) — webcam + PoseNet slash gameplay, room code lobby, countdown, score HUD, results.
-2. **Tablet** (`tablet.html`) — Home → connect with room code → live/pause → end-game stats.
+### Tablet (`tablet.html`)
+1. Welcome / Log in / Create account (localStorage auth)
+2. Profile (“Make it yours”)
+3. Alien avatar creator
+4. Solar-system home + bottom nav (Home · Explore · Stats · Settings)
+5. Planet select → room code connect → live / pause → results
 
-Both tabs sync on the **same computer** via `BroadcastChannel` + `localStorage` and a shared 4-character room code.
+### TV (`game.html`)
+Webcam PoseNet **Star Slash** — slash solar-system planets for 30 seconds. Syncs with the tablet via room code on the same computer.
 
 ## Run locally
-
-Serve the folder over HTTP (camera + module-free static files):
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Then open:
-
 - Landing: http://localhost:8080/
-- TV: http://localhost:8080/game.html
 - Tablet: http://localhost:8080/tablet.html
+- TV: http://localhost:8080/game.html
 
-Allow camera access on the TV tab. Enter the on-screen room code on the tablet and press **Join & start**.
-
-### Demo keys (TV tab)
-
-- `P` — start match  
-- `Space` — pause / resume  
-- `R` — restart  
-
-## Stack
-
-- p5.js + ml5.js PoseNet (adapted from the slash-circles sketch)
-- Vanilla HTML/CSS/JS companion UI
+Demo keys on TV: `P` start · `Space` pause · `R` restart · click-drag to slash without PoseNet.
