@@ -329,6 +329,11 @@ function updateHandTrails() {
     rightPt = getMirroredKeypoint(poses[0], "rightWrist");
   }
 
+  // Mouse / trackpad fallback for demos without a clear PoseNet lock
+  if (!leftPt && !rightPt && mouseIsPressed) {
+    rightPt = { x: mouseX, y: mouseY };
+  }
+
   updateTrail("left", leftPt);
   updateTrail("right", rightPt);
 }
