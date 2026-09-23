@@ -121,8 +121,20 @@ function initRoomAndSync() {
         playMode = msg.state.playMode;
         forceSoloAI = playMode !== "multi";
       }
+      if (msg.state.gameType === "stars") {
+        const next = new URL(window.location.href);
+        next.searchParams.set("mode", "stars");
+        next.searchParams.delete("autostart");
+        window.location.replace(next.toString());
+      }
     }
   });
+
+  if (window.STELLA_TV_AUTOSTART) {
+    setTimeout(() => {
+      if (gameState === "lobby") startOrbitMatch();
+    }, 700);
+  }
 }
 
 function publishOrbitState() {

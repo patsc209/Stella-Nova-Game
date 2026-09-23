@@ -2,20 +2,20 @@
 
 Upper-body rehab class prototype for a user-testing fair.
 
-## Games
-- **Star Slash** (`game.html`) — Sun world; slash rising stars (30s)
-- **Orbit Rally** (`orbit.html`) — Mercury→Neptune once unlocked; arm air-hockey (solo AI or 2-player)
+## One TV link
+Open **`game.html`** only. It auto-switches:
+- **Sun** → Star Slash (solo only)
+- **Mercury+** → Orbit Rally (solo AI or multiplayer)
 
-## Tablet flow
-Login → profile (+ optional arm + pain 1–5) → alien → solar home → Explore → **Solo / Play with others** → room code → live/pause → results
+## Tablet
+Login → profile (+ arm pain 1–5) → alien → solar home → planet → Solo/Multi → room code → play
 
 ## Progression
-Only the **Sun** starts unlocked. Score **✦ 12+** in a finished round to unlock the next world (Orbit Rally).
+Only the Sun starts unlocked. Score **✦ 12+** in a round to unlock the next world (with unlock animation).
 
 ## Fair testing
-Local `localStorage` only. Results/Settings: **Continue** or **Reset for next tester**.
+Local accounts only. Continue or Reset for next tester after a round.
 
-## Run
 ```bash
 python3 -m http.server 8080
 ```

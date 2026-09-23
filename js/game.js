@@ -93,15 +93,29 @@ function initRoomAndSync() {
     playerName,
     hostReady: true,
     tabletReady: existing ? !!existing.tabletReady : false,
+    gameType: "stars",
   });
 
   sync.on((msg) => {
     if (msg.type === "command") handleCommand(msg.action);
     if (msg.type === "hello" && msg.role === "tablet") sync.publish({ hostReady: true });
-    if (msg.type === "state" && msg.from === "tablet" && msg.state && msg.state.playerName) {
-      playerName = msg.state.playerName;
+    if (msg.type === "state" && msg.from === "tablet" && msg.state) {
+      if (msg.state.playerName) playerName = msg.state.playerName;
+      // If tablet picked a different game, hop to the unified TV mode for it
+      if (msg.state.gameType === "orbit") {
+        const next = new URL(window.location.href);
+        next.searchParams.set("mode", "orbit");
+        next.searchParams.delete("autostart");
+        window.location.replace(next.toString());
+      }
     }
   });
+
+  if (window.STELLA_TV_AUTOSTART) {
+    setTimeout(() => {
+      if (gamePhase === "lobby") startCountdown();
+    }, 700);
+  }
 
   updateLobbyUI();
 }
@@ -137,6 +151,7 @@ function publishGameState() {
     playerName,
     hostReady: true,
     countdown: countdownValue,
+    gameType: "stars",
   });
 }
 

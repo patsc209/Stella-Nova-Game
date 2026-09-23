@@ -19,7 +19,7 @@
       game: "Orbit Rally",
       gameType: "orbit",
       blurb: "Air-hockey with your arms — unlocks after the Sun",
-      colour: "#b1b1b1",
+      colour: "#d4a35a",
       playable: true,
       tvPage: "orbit.html",
     },
@@ -239,19 +239,37 @@
       { id: "neptune", x: 92, y: 18, r: 15 },
     ];
 
+    const celebrateId = sessionStorage.getItem("stella-nova:celebrate-unlock");
+
     stage.innerHTML = layout
       .map((p) => {
         const meta = PLANETS.find((x) => x.id === p.id);
         const open = isUnlocked(user, p.id);
         const rings = meta && meta.rings ? " rings" : "";
         const sunClass = meta && meta.sun ? " sun" : " planet";
-        return `<button class="sol-body${sunClass}${rings}${open ? " unlocked" : " locked"}" type="button" data-planet="${p.id}" style="left:${p.x}%;top:${p.y}%;width:${p.r * 2}px;height:${p.r * 2}px;--p:${meta.colour}" title="${meta.name}"></button>`;
+        const celebrate = celebrateId === p.id ? " just-unlocked" : "";
+        return `<button class="sol-body${sunClass}${rings}${open ? " unlocked" : " locked"}${celebrate}" type="button" data-planet="${p.id}" style="left:${p.x}%;top:${p.y}%;width:${p.r * 2}px;height:${p.r * 2}px;--p:${meta.colour}" title="${meta.name}"></button>`;
       })
       .join("");
 
     stage.querySelectorAll("[data-planet]").forEach((btn) => {
       btn.addEventListener("click", () => openPlanet(btn.dataset.planet));
     });
+
+    if (celebrateId) {
+      const toast = document.getElementById("unlock-toast");
+      const world = PLANETS.find((p) => p.id === celebrateId);
+      if (toast && world) {
+        toast.textContent = "Unlocked: " + world.name + " · " + world.game + "!";
+        toast.hidden = false;
+        toast.classList.add("show");
+        setTimeout(() => {
+          toast.classList.remove("show");
+          toast.hidden = true;
+        }, 3200);
+      }
+      sessionStorage.removeItem("stella-nova:celebrate-unlock");
+    }
   }
 
   function renderExplore() {
@@ -323,8 +341,12 @@
       planet: p,
       locked: false,
       title: "Play " + p.name + "?",
-      body: p.blurb + " You’ll connect to the TV with a room code, then slash rising stars.",
-      primaryLabel: "Play Star Slash",
+      body:
+        p.blurb +
+        " You’ll pick Solo" +
+        (p.gameType === "orbit" ? " or Play with others" : "") +
+        ", then connect to the TV with one room code.",
+      primaryLabel: "Play " + p.game,
       secondaryLabel: "Not now",
       onPrimary: () => {
         hidePlanetModal();
@@ -373,21 +395,29 @@
     document.getElementById("mode-game-label").textContent = world
       ? world.game + " on " + world.name + " — pick a mode, then connect to the TV."
       : "Pick a mode, then connect to the TV.";
+
+    const multiCard = document.querySelector(".mode-card.mode-multi");
+    const multiBtn = document.getElementById("btn-mode-multi");
+    const soloOnly = world && world.gameType === "stars";
+    if (multiCard) multiCard.classList.toggle("is-disabled", !!soloOnly);
+    if (multiBtn) {
+      multiBtn.disabled = !!soloOnly;
+      multiBtn.textContent = soloOnly ? "Multiplayer locked" : "Play with others";
+    }
+    const modeNote = document.getElementById("mode-lock-note");
+    if (modeNote) {
+      modeNote.hidden = !soloOnly;
+    }
     showScreen("mode");
   }
 
   function goToConnect() {
     const world = PLANETS.find((p) => p.id === selectedPlanetId);
     const hint = document.getElementById("connect-hint");
-    if (world && world.gameType === "orbit") {
-      hint.textContent =
-        "Open orbit.html on the TV tab, then enter its room code. Mode: " +
-        (selectedPlayMode === "multi" ? "Play with others" : "Solo (AI opponent)");
-    } else {
-      hint.textContent =
-        "Open game.html on the TV tab, then enter its room code. Mode: " +
-        (selectedPlayMode === "multi" ? "Play with others" : "Solo");
-    }
+    hint.textContent =
+      "Open the TV tab (game.html) — it switches games automatically. Enter its room code. Mode: " +
+      (selectedPlayMode === "multi" ? "Play with others" : "Solo") +
+      (world ? " · " + world.game : "");
     showScreen("connect");
   }
 
@@ -696,6 +726,8 @@
   });
 
   document.getElementById("btn-mode-multi").addEventListener("click", () => {
+    const world = PLANETS.find((p) => p.id === selectedPlanetId);
+    if (world && world.gameType === "stars") return;
     selectedPlayMode = "multi";
     goToConnect();
   });
@@ -782,6 +814,7 @@
             : "";
           unlockEl.textContent = lastUnlockMessage;
           unlockEl.hidden = false;
+          sessionStorage.setItem("stella-nova:celebrate-unlock", progress.unlockedId);
         } else if (starsEarned < Auth.UNLOCK_SCORE) {
           unlockEl.textContent =
             "Score ✦ " + Auth.UNLOCK_SCORE + "+ in one round to unlock the next world.";

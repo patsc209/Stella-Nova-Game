@@ -16,17 +16,17 @@
   </head>
   <body class="game-body">
     <div id="game-root"></div>
-    <div id="status">Loading camera…</div>
+    <div id="status">Starting TV…</div>
 
     <div id="lobby-overlay" class="overlay visible">
       <div class="overlay-card">
-        <h1>Stella Nova</h1>
-        <p>Open the tablet tab and enter this room code to start.</p>
+        <h1 id="tv-game-title">Stella Nova</h1>
+        <p>One TV link for every world — the game switches when you pick a planet on the tablet.</p>
         <div class="room-code" id="room-code-display">····</div>
-        <p class="overlay-note">
-          Stand back so your upper body is in frame. Slash rising stars with either wrist.
+        <p class="overlay-note" id="tv-game-note">
+          Open the tablet, pick a planet, then enter this room code.
           <br />
-          Demo keys: <strong>P</strong> start · <strong>Space</strong> pause · <strong>R</strong> restart
+          Waiting for tablet…
         </p>
       </div>
     </div>
@@ -39,6 +39,6 @@
     </div>
 
     <script src="js/sync.js"></script>
-    <script src="js/game.js"></script>
+    <script src="js/tv.js"></script>
   </body>
 </html>

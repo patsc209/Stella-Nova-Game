@@ -2,43 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Stella Nova — Orbit Rally</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Sora:wght@600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="css/styles.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
-    <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
+    <meta http-equiv="refresh" content="0;url=game.html" />
+    <title>Redirecting to Stella Nova TV…</title>
+    <script>
+      // Keep old orbit.html bookmarks working — one TV link now.
+      const q = window.location.search || "";
+      const params = new URLSearchParams(q);
+      if (!params.get("mode")) params.set("mode", "orbit");
+      window.location.replace("game.html?" + params.toString());
+    </script>
   </head>
-  <body class="game-body">
-    <div id="game-root"></div>
-    <div id="status">Loading camera…</div>
-
-    <div id="lobby-overlay" class="overlay visible">
-      <div class="overlay-card">
-        <h1>Orbit Rally</h1>
-        <p>Open the tablet, pick Solo or Play with others, then enter this room code.</p>
-        <div class="room-code" id="room-code-display">····</div>
-        <p class="overlay-note">
-          Solo uses an AI opponent on the right. Multiplayer needs two people in frame.
-          <br />
-          Demo keys: <strong>P</strong> start · <strong>Space</strong> pause · <strong>R</strong> restart
-        </p>
-      </div>
-    </div>
-
-    <div id="paused-overlay" class="overlay">
-      <div class="overlay-card">
-        <h1>Paused</h1>
-        <p>Take a break — resume from the tablet when you’re ready.</p>
-      </div>
-    </div>
-
-    <script src="js/sync.js"></script>
-    <script src="js/orbit.js"></script>
+  <body>
+    <p>Orbit Rally now lives on the main TV page. Redirecting…</p>
   </body>
 </html>
