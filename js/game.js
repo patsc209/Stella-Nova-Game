@@ -1,11 +1,11 @@
-/* Planet Hockey — TV / webcam PoseNet slash game */
+/* Stella Nova — TV / webcam PoseNet star-slash game */
 
 let video;
 let poseNet;
 let poses = [];
 let modelLoaded = false;
 
-let planets = [];
+let stars = [];
 let particles = [];
 let trails = { left: [], right: [] };
 
@@ -15,25 +15,14 @@ let timeLeft = 30;
 let gamePhase = "lobby"; // lobby | countdown | playing | paused | over
 let countdownValue = 3;
 let lastSpawn = 0;
-let spawnInterval = 900;
+let spawnInterval = 750;
 let lastSecondTick = 0;
 let countdownTick = 0;
 let statusEl;
 
 const TRAIL_MAX_LEN = 14;
-const HIT_RADIUS_PAD = 16;
+const HIT_RADIUS_PAD = 12;
 const GAME_SECONDS = 30;
-
-const PLANET_TYPES = [
-  { name: "Mercury", points: 5, r: [22, 28], colors: ["#b1b1b1", "#8a8a8a", "#d0d0d0"] },
-  { name: "Venus", points: 8, r: [26, 34], colors: ["#e8c07a", "#c9a25a", "#f3d9a4"] },
-  { name: "Earth", points: 10, r: [28, 36], colors: ["#3d8bfd", "#2ecc71", "#a8e6ff"] },
-  { name: "Mars", points: 8, r: [24, 32], colors: ["#e07040", "#c04020", "#f0a080"] },
-  { name: "Jupiter", points: 15, r: [40, 52], colors: ["#d4a574", "#c68642", "#f0d0a0"] },
-  { name: "Saturn", points: 20, r: [36, 46], colors: ["#f0d590", "#e0c060", "#fff2c4"], rings: true },
-  { name: "Uranus", points: 12, r: [30, 38], colors: ["#7ec8e3", "#5aa8c8", "#b8e8f8"] },
-  { name: "Neptune", points: 12, r: [30, 38], colors: ["#4169e1", "#2a4cb0", "#7aa0ff"] },
-];
 
 let sync = null;
 let roomCode = "";
@@ -85,7 +74,6 @@ function initRoomAndSync() {
   roomCode = (params.get("room") || PlanetHockeySync.generateRoomCode()).toUpperCase();
   playerName = params.get("name") || localStorage.getItem("ph-player-name") || "Player";
 
-  // Persist room in URL for refresh / sharing between tabs
   if (!params.get("room")) {
     params.set("room", roomCode);
     history.replaceState(null, "", "?" + params.toString());
@@ -108,17 +96,10 @@ function initRoomAndSync() {
   });
 
   sync.on((msg) => {
-    if (msg.type === "command") {
-      handleCommand(msg.action);
-    }
-    if (msg.type === "hello" && msg.role === "tablet") {
-      sync.publish({ hostReady: true });
-    }
-    if (msg.type === "state" && msg.from === "tablet" && msg.state) {
-      if (msg.state.playerName) playerName = msg.state.playerName;
-      if (msg.state.tabletReady && gamePhase === "lobby") {
-        // tablet signaled ready via state — wait for explicit play command
-      }
+    if (msg.type === "command") handleCommand(msg.action);
+    if (msg.type === "hello" && msg.role === "tablet") sync.publish({ hostReady: true });
+    if (msg.type === "state" && msg.from === "tablet" && msg.state && msg.state.playerName) {
+      playerName = msg.state.playerName;
     }
   });
 
@@ -160,12 +141,12 @@ function publishGameState() {
 }
 
 function startCountdown() {
-  planets = [];
+  stars = [];
   particles = [];
   trails = { left: [], right: [] };
   score = 0;
   timeLeft = GAME_SECONDS;
-  spawnInterval = 900;
+  spawnInterval = 750;
   countdownValue = 3;
   countdownTick = millis();
   lastSpawn = millis();
@@ -174,7 +155,7 @@ function startCountdown() {
 }
 
 function resetToLobby() {
-  planets = [];
+  stars = [];
   particles = [];
   trails = { left: [], right: [] };
   score = 0;
@@ -186,33 +167,37 @@ function updateLobbyUI() {
   const lobby = document.getElementById("lobby-overlay");
   const paused = document.getElementById("paused-overlay");
   if (!lobby || !paused) return;
-
   lobby.classList.toggle("visible", gamePhase === "lobby");
   paused.classList.toggle("visible", gamePhase === "paused");
 }
 
 function draw() {
-  background(8, 12, 28);
+  background(5, 6, 18);
 
-  // Mirrored camera
   push();
   translate(width, 0);
   scale(-1, 1);
   if (video) {
     const vw = video.width;
     const vh = video.height;
-    const scale = Math.max(width / vw, height / vh);
-    const dw = vw * scale;
-    const dh = vh * scale;
+    const scaleFit = Math.max(width / vw, height / vh);
+    const dw = vw * scaleFit;
+    const dh = vh * scaleFit;
+    tint(255, 160);
     image(video, (width - dw) / 2, (height - dh) / 2, dw, dh);
+    noTint();
   }
   pop();
 
-  // Soft vignette for readability
   drawVignette();
 
   if (gamePhase === "lobby") {
-    drawWaitingHint();
+    if (!modelLoaded) {
+      fill(255, 220);
+      textAlign(CENTER, CENTER);
+      textSize(22);
+      text("Warming up camera & PoseNet…", width / 2, height - 48);
+    }
     return;
   }
 
@@ -225,8 +210,8 @@ function draw() {
 
   if (gamePhase === "playing") {
     updateHandTrails();
-    spawnPlanets();
-    updateAndDrawPlanets();
+    spawnStars();
+    updateAndDrawStars();
     drawTrails();
     updateAndDrawParticles();
     checkSlashes();
@@ -236,7 +221,7 @@ function draw() {
   }
 
   if (gamePhase === "paused") {
-    updateAndDrawPlanets(false);
+    updateAndDrawStars(false);
     drawTrails();
     updateAndDrawParticles();
     drawHUD();
@@ -253,21 +238,11 @@ function draw() {
 function drawVignette() {
   noFill();
   for (let i = 0; i < 6; i++) {
-    stroke(8, 12, 28, 30 + i * 18);
+    stroke(5, 6, 18, 30 + i * 18);
     strokeWeight(40);
     rect(20 + i * 8, 20 + i * 8, width - 40 - i * 16, height - 40 - i * 16, 24);
   }
   noStroke();
-}
-
-function drawWaitingHint() {
-  // Minimal on-canvas hint; main lobby is HTML overlay
-  if (!modelLoaded) {
-    fill(255, 220);
-    textAlign(CENTER, CENTER);
-    textSize(22);
-    text("Warming up camera & PoseNet…", width / 2, height - 48);
-  }
 }
 
 function updateCountdown() {
@@ -296,11 +271,9 @@ function drawCountdown() {
   textStyle(NORMAL);
 }
 
-// ---- Hand tracking ----
 function getMirroredKeypoint(pose, partName) {
   const kp = pose.pose.keypoints.find((k) => k.part === partName);
   if (kp && kp.score > 0.25) {
-    // Map from video coordinate space into canvas (mirrored)
     const mapped = mapVideoToCanvas(kp.position.x, kp.position.y);
     return { x: width - mapped.x, y: mapped.y };
   }
@@ -310,15 +283,12 @@ function getMirroredKeypoint(pose, partName) {
 function mapVideoToCanvas(vx, vy) {
   const vw = video.width;
   const vh = video.height;
-  const scale = Math.max(width / vw, height / vh);
-  const dw = vw * scale;
-  const dh = vh * scale;
+  const scaleFit = Math.max(width / vw, height / vh);
+  const dw = vw * scaleFit;
+  const dh = vh * scaleFit;
   const ox = (width - dw) / 2;
   const oy = (height - dh) / 2;
-  return {
-    x: ox + vx * scale,
-    y: oy + vy * scale,
-  };
+  return { x: ox + vx * scaleFit, y: oy + vy * scaleFit };
 }
 
 function updateHandTrails() {
@@ -328,12 +298,9 @@ function updateHandTrails() {
     leftPt = getMirroredKeypoint(poses[0], "leftWrist");
     rightPt = getMirroredKeypoint(poses[0], "rightWrist");
   }
-
-  // Mouse / trackpad fallback for demos without a clear PoseNet lock
   if (!leftPt && !rightPt && mouseIsPressed) {
     rightPt = { x: mouseX, y: mouseY };
   }
-
   updateTrail("left", leftPt);
   updateTrail("right", rightPt);
 }
@@ -348,8 +315,8 @@ function updateTrail(side, pt) {
 }
 
 function drawTrails() {
-  drawSingleTrail(trails.left, color(120, 200, 255));
-  drawSingleTrail(trails.right, color(255, 140, 220));
+  drawSingleTrail(trails.left, color(80, 220, 255));
+  drawSingleTrail(trails.right, color(255, 110, 200));
 }
 
 function drawSingleTrail(trail, col) {
@@ -375,104 +342,79 @@ function drawSingleTrail(trail, col) {
   circle(tip.x, tip.y, 22);
 }
 
-// ---- Planets ----
-function spawnPlanets() {
+function spawnStars() {
   if (millis() - lastSpawn > spawnInterval) {
     lastSpawn = millis();
-    const type = random(PLANET_TYPES);
-    const r = random(type.r[0], type.r[1]);
-    planets.push({
-      type,
+    const r = random(20, 36);
+    stars.push({
       x: random(r + 20, width - r - 20),
       y: height + r + 10,
       r,
-      vy: random(2.4, 4.6),
-      vx: random(-0.7, 0.7),
+      vy: random(2.2, 4.2),
+      vx: random(-0.6, 0.6),
+      hue: random(360),
       rot: random(TWO_PI),
-      spin: random(-0.02, 0.02),
+      rotSpeed: random(-0.02, 0.02),
+      twinkle: random(1000),
     });
-    spawnInterval = max(380, spawnInterval - 8);
+    spawnInterval = max(350, spawnInterval - 4);
   }
 }
 
-function updateAndDrawPlanets(move = true) {
-  for (let i = planets.length - 1; i >= 0; i--) {
-    const p = planets[i];
+function updateAndDrawStars(move = true) {
+  colorMode(HSB, 360, 100, 100, 255);
+  for (let i = stars.length - 1; i >= 0; i--) {
+    const c = stars[i];
     if (move) {
-      p.y -= p.vy;
-      p.x += p.vx;
-      p.rot += p.spin;
+      c.y -= c.vy;
+      c.x += c.vx;
+      c.rot += c.rotSpeed;
     }
-    if (p.y + p.r < -40) {
-      planets.splice(i, 1);
+    if (c.y + c.r < -40) {
+      stars.splice(i, 1);
       continue;
     }
-    drawPlanet(p);
-  }
-}
 
-function drawPlanet(p) {
-  const c = p.type.colors;
-  push();
-  translate(p.x, p.y);
-  rotate(p.rot);
-
-  if (p.type.rings) {
-    noFill();
-    stroke(255, 230, 160, 160);
-    strokeWeight(4);
-    ellipse(0, 0, p.r * 2.8, p.r * 0.9);
-    stroke(255, 210, 120, 100);
-    strokeWeight(2);
-    ellipse(0, 0, p.r * 3.1, p.r * 1.05);
+    push();
+    translate(c.x, c.y);
+    rotate(c.rot);
+    const pulse = 0.85 + 0.15 * sin(frameCount * 0.08 + c.twinkle);
     noStroke();
+    fill(c.hue, 60, 100, 60);
+    circle(0, 0, c.r * 2.6 * pulse);
+    fill(c.hue, 75, 100, 235);
+    drawStarShape(0, 0, c.r * 0.42, c.r, 5);
+    fill(c.hue, 25, 100, 220);
+    circle(0, 0, c.r * 0.35);
+    pop();
   }
-
-  // Glow
-  noStroke();
-  fill(red(color(c[0])), green(color(c[0])), blue(color(c[0])), 50);
-  circle(0, 0, p.r * 2.6);
-
-  // Body
-  fill(c[0]);
-  circle(0, 0, p.r * 2);
-  fill(c[1]);
-  arc(0, 0, p.r * 2, p.r * 2, 0, PI);
-  fill(c[2]);
-  circle(-p.r * 0.28, -p.r * 0.28, p.r * 0.7);
-
-  // Points badge
-  fill(0, 0, 0, 140);
-  circle(p.r * 0.55, p.r * 0.55, 22);
-  fill(255);
-  textAlign(CENTER, CENTER);
-  textSize(11);
-  text("+" + p.type.points, p.r * 0.55, p.r * 0.55);
-
-  pop();
+  colorMode(RGB, 255);
 }
 
-// ---- Collision ----
+function drawStarShape(x, y, radiusInner, radiusOuter, npoints) {
+  const angle = TWO_PI / npoints;
+  const halfAngle = angle / 2.0;
+  beginShape();
+  for (let a = -PI / 2; a < TWO_PI - PI / 2; a += angle) {
+    vertex(x + cos(a) * radiusOuter, y + sin(a) * radiusOuter);
+    vertex(x + cos(a + halfAngle) * radiusInner, y + sin(a + halfAngle) * radiusInner);
+  }
+  endShape(CLOSE);
+}
+
 function checkSlashes() {
-  checkTrailAgainstPlanets(trails.left);
-  checkTrailAgainstPlanets(trails.right);
+  checkTrailAgainstStars(trails.left);
+  checkTrailAgainstStars(trails.right);
 }
 
-function checkTrailAgainstPlanets(trail) {
+function checkTrailAgainstStars(trail) {
   if (trail.length < 2) return;
-  for (let i = planets.length - 1; i >= 0; i--) {
-    const p = planets[i];
+  for (let i = stars.length - 1; i >= 0; i--) {
+    const c = stars[i];
     for (let j = 1; j < trail.length; j++) {
-      const d = distToSegment(
-        p.x,
-        p.y,
-        trail[j - 1].x,
-        trail[j - 1].y,
-        trail[j].x,
-        trail[j].y
-      );
-      if (d < p.r + HIT_RADIUS_PAD) {
-        popPlanet(i);
+      const d = distToSegment(c.x, c.y, trail[j - 1].x, trail[j - 1].y, trail[j].x, trail[j].y);
+      if (d < c.r + HIT_RADIUS_PAD) {
+        popStar(i);
         break;
       }
     }
@@ -488,46 +430,49 @@ function distToSegment(px, py, x1, y1, x2, y2) {
   return dist(px, py, x1 + t * dx, y1 + t * dy);
 }
 
-function popPlanet(index) {
-  const p = planets[index];
-  spawnParticles(p.x, p.y, color(p.type.colors[0]));
-  score += p.type.points;
+function popStar(index) {
+  const c = stars[index];
+  spawnParticles(c.x, c.y, c.hue);
+  stars.splice(index, 1);
+  score += 1;
   if (score > bestScore) bestScore = score;
-  planets.splice(index, 1);
   publishGameState();
 }
 
-function spawnParticles(x, y, col) {
-  for (let i = 0; i < 16; i++) {
+function spawnParticles(x, y, hue) {
+  colorMode(HSB, 360, 100, 100, 255);
+  for (let i = 0; i < 14; i++) {
     const angle = random(TWO_PI);
-    const speed = random(2, 7);
+    const speed = random(2, 6);
     particles.push({
       x,
       y,
       vx: cos(angle) * speed,
       vy: sin(angle) * speed,
       life: 255,
-      col,
-      size: random(5, 11),
+      hue,
     });
   }
+  colorMode(RGB, 255);
 }
 
 function updateAndDrawParticles() {
+  colorMode(HSB, 360, 100, 100, 255);
   noStroke();
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.x += p.vx;
     p.y += p.vy;
-    p.vy += 0.12;
-    p.life -= 10;
+    p.vy += 0.15;
+    p.life -= 8;
     if (p.life <= 0) {
       particles.splice(i, 1);
       continue;
     }
-    fill(red(p.col), green(p.col), blue(p.col), p.life);
-    circle(p.x, p.y, p.size);
+    fill(p.hue, 80, 100, p.life);
+    circle(p.x, p.y, 8);
   }
+  colorMode(RGB, 255);
 }
 
 function updateTimer() {
@@ -545,20 +490,18 @@ function updateTimer() {
 
 function drawHUD() {
   const pad = 24;
-  // Score pill
   noStroke();
   fill(20, 24, 48, 180);
-  rect(pad, pad, 200, 64, 18);
+  rect(pad, pad, 220, 64, 18);
   fill(255);
   textAlign(LEFT, CENTER);
   textSize(14);
   text(playerName.toUpperCase(), pad + 18, pad + 22);
   textSize(28);
   textStyle(BOLD);
-  text(String(score), pad + 18, pad + 46);
+  text("✦ " + score, pad + 18, pad + 46);
   textStyle(NORMAL);
 
-  // Timer
   fill(20, 24, 48, 180);
   rect(width - pad - 120, pad, 120, 64, 18);
   fill(timeLeft <= 5 ? "#ff7b7b" : "#ffffff");
@@ -568,15 +511,14 @@ function drawHUD() {
   text(String(timeLeft), width - pad - 60, pad + 34);
   textStyle(NORMAL);
 
-  // Brand
   fill(255, 200);
   textAlign(CENTER, TOP);
   textSize(16);
-  text("PLANET HOCKEY", width / 2, pad + 8);
+  text("STELLA NOVA", width / 2, pad + 8);
 }
 
 function drawGameOver() {
-  fill(8, 12, 28, 190);
+  fill(5, 6, 18, 190);
   rect(0, 0, width, height);
   fill(255);
   textAlign(CENTER, CENTER);
@@ -585,13 +527,12 @@ function drawGameOver() {
   text("Nice work!", width / 2, height / 2 - 60);
   textStyle(NORMAL);
   textSize(28);
-  text("Final score  " + score, width / 2, height / 2);
+  text("Stars collected  " + score, width / 2, height / 2);
   textSize(18);
   fill(200);
-  text("Best  " + bestScore + "   ·   Use the tablet to play again", width / 2, height / 2 + 48);
+  text("Best  " + bestScore + "   ·   Use the tablet to continue", width / 2, height / 2 + 48);
 }
 
-// Keyboard helpers for demo without tablet
 function keyPressed() {
   if (key === "p" || key === "P") {
     if (gamePhase === "lobby" || gamePhase === "over") startCountdown();

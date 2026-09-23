@@ -1,72 +1,80 @@
-/* ReGrade tablet — full onboarding + solar home + game sync */
+/* Stella Nova tablet — onboarding + solar home + star-slash sync */
 
 (function () {
   const PLANETS = [
     {
+      id: "sun",
+      name: "Sun",
+      game: "Star Slash",
+      blurb: "Slash rising stars for 30 seconds — first world",
+      colour: "#ffb84d",
+      playable: true,
+      sun: true,
+    },
+    {
       id: "mercury",
       name: "Mercury",
-      game: "Quick Flick",
-      blurb: "Short reach warm-ups",
+      game: "Star Slash",
+      blurb: "Faster stars near the sun",
       colour: "#b1b1b1",
-      unlocked: false,
+      playable: true,
     },
     {
       id: "venus",
       name: "Venus",
-      game: "Glow Drift",
-      blurb: "Slow sweeping arcs",
+      game: "Star Slash",
+      blurb: "Bright star showers",
       colour: "#e8c07a",
-      unlocked: false,
+      playable: true,
     },
     {
       id: "earth",
       name: "Earth",
       game: "Star Slash",
-      blurb: "Slash planets in the air for stars — 30 seconds",
+      blurb: "Reach across your sky",
       colour: "#3d8bfd",
-      unlocked: true,
       playable: true,
     },
     {
       id: "mars",
       name: "Mars",
-      game: "Orbit Hockey",
-      blurb: "Rally together (coming soon)",
+      game: "Star Slash",
+      blurb: "Red-hot star bursts",
       colour: "#e07040",
-      unlocked: false,
+      playable: true,
     },
     {
       id: "jupiter",
       name: "Jupiter",
-      game: "Giant Sweep",
-      blurb: "Wide arm reaches",
+      game: "Star Slash",
+      blurb: "Giant star fields",
       colour: "#d4a574",
-      unlocked: false,
+      playable: true,
     },
     {
       id: "saturn",
       name: "Saturn",
-      game: "Ring Rally",
-      blurb: "Circular arm paths",
+      game: "Star Slash",
+      blurb: "Ringed star paths",
       colour: "#f0d590",
-      unlocked: false,
+      playable: true,
       rings: true,
     },
     {
       id: "uranus",
       name: "Uranus",
-      game: "Ice Drift",
-      blurb: "Cool-down stretches",
+      game: "Star Slash",
+      blurb: "Cool drifting stars",
       colour: "#7ec8e3",
-      unlocked: false,
+      playable: true,
     },
     {
       id: "neptune",
       name: "Neptune",
-      game: "Deep Reach",
-      blurb: "Far side reaches",
+      game: "Star Slash",
+      blurb: "Deep-space finale",
       colour: "#4169e1",
-      unlocked: false,
+      playable: true,
     },
   ];
 
@@ -102,6 +110,8 @@
     colour: ReGradeAlien.COLOURS.map((c) => ({ id: c, label: c, swatch: true })),
   };
 
+  const Auth = window.StellaNovaAuth || window.ReGradeAuth;
+
   const screens = {};
   document.querySelectorAll(".screen").forEach((el) => {
     screens[el.dataset.screen] = el;
@@ -117,17 +127,18 @@
   let armPreference = null;
   let alienDraft = ReGradeAlien.mergeAlien(null);
   let alienCat = "shape";
-  let selectedPlanetId = "earth";
+  let selectedPlanetId = "sun";
   let lastAwardedScore = null;
+  let lastUnlockMessage = "";
 
   const roomInputs = Array.from(document.querySelectorAll("#room-inputs input"));
 
-  function showScreen(name, { keepNav } = {}) {
+  function showScreen(name) {
     Object.keys(screens).forEach((key) => {
       screens[key].classList.toggle("active", key === name);
     });
     const mainTabs = ["home", "explore", "stats", "settings"];
-    const showNav = mainTabs.includes(name) || keepNav;
+    const showNav = mainTabs.includes(name);
     bottomNav.hidden = !showNav;
     shell.classList.toggle("nav-visible", showNav);
     if (showNav) {
@@ -142,6 +153,11 @@
     connLabel.textContent = label;
   }
 
+  function isUnlocked(user, id) {
+    const unlocked = new Set((user && user.unlockedPlanets) || ["sun"]);
+    return unlocked.has(id);
+  }
+
   function refreshWelcomeMascot() {
     ReGradeAlien.renderInto(
       document.getElementById("welcome-mascot"),
@@ -151,7 +167,7 @@
   }
 
   function routeFromAuth() {
-    const user = ReGradeAuth.getCurrentUser();
+    const user = Auth.getCurrentUser();
     if (!user) {
       showScreen("welcome");
       return;
@@ -173,45 +189,43 @@
   }
 
   function renderHome(user) {
-    user = user || ReGradeAuth.getCurrentUser();
+    user = user || Auth.getCurrentUser();
     if (!user) return;
     document.getElementById("home-greeting").textContent = "Hey " + (user.name || "explorer");
     document.getElementById("star-count").textContent = String(user.stars || 0);
-    const hasStars = (user.stars || 0) > 0;
-    document.getElementById("home-title").textContent = hasStars
+    const unlockedCount = (user.unlockedPlanets || ["sun"]).length;
+    const hasProgress = unlockedCount > 1 || (user.stars || 0) > 0;
+    document.getElementById("home-title").textContent = hasProgress
       ? "Your little universe is growing"
       : "Your universe is waiting…";
-    document.getElementById("home-caption").textContent = hasStars
-      ? "Tap a planet or Explore to play Star Slash."
-      : "Collect stars and explore new worlds.";
+    document.getElementById("home-caption").textContent = hasProgress
+      ? "Collect " + Auth.UNLOCK_SCORE + "+ stars in a round to unlock the next world."
+      : "Start at the Sun — slash stars, then unlock more worlds.";
     ReGradeAlien.renderInto(document.getElementById("home-alien"), user.alien, 100);
     renderSolarStage(user);
   }
 
   function renderSolarStage(user) {
     const stage = document.getElementById("solar-stage");
-    const unlocked = new Set(user.unlockedPlanets || ["earth"]);
     const layout = [
-      { id: "sun", x: 8, y: 42, r: 48, sun: true },
-      { id: "mercury", x: 28, y: 22, r: 14 },
-      { id: "venus", x: 40, y: 48, r: 18 },
-      { id: "earth", x: 55, y: 28, r: 20 },
-      { id: "mars", x: 68, y: 52, r: 16 },
-      { id: "jupiter", x: 78, y: 24, r: 28 },
-      { id: "saturn", x: 88, y: 55, r: 22 },
+      { id: "sun", x: 12, y: 42, r: 44 },
+      { id: "mercury", x: 30, y: 22, r: 14 },
+      { id: "venus", x: 40, y: 50, r: 18 },
+      { id: "earth", x: 54, y: 28, r: 20 },
+      { id: "mars", x: 66, y: 54, r: 16 },
+      { id: "jupiter", x: 76, y: 24, r: 28 },
+      { id: "saturn", x: 86, y: 56, r: 22 },
       { id: "uranus", x: 70, y: 12, r: 16 },
       { id: "neptune", x: 92, y: 18, r: 15 },
     ];
 
     stage.innerHTML = layout
       .map((p) => {
-        if (p.sun) {
-          return `<button class="sol-body sun" type="button" style="left:${p.x}%;top:${p.y}%;width:${p.r * 2}px;height:${p.r * 2}px" title="Sun" disabled></button>`;
-        }
         const meta = PLANETS.find((x) => x.id === p.id);
-        const isUnlocked = unlocked.has(p.id) || meta.unlocked;
+        const open = isUnlocked(user, p.id);
         const rings = meta && meta.rings ? " rings" : "";
-        return `<button class="sol-body planet${rings}${isUnlocked ? " unlocked" : " locked"}" type="button" data-planet="${p.id}" style="left:${p.x}%;top:${p.y}%;width:${p.r * 2}px;height:${p.r * 2}px;--p:${meta.colour}" title="${meta.name}"></button>`;
+        const sunClass = meta && meta.sun ? " sun" : " planet";
+        return `<button class="sol-body${sunClass}${rings}${open ? " unlocked" : " locked"}" type="button" data-planet="${p.id}" style="left:${p.x}%;top:${p.y}%;width:${p.r * 2}px;height:${p.r * 2}px;--p:${meta.colour}" title="${meta.name}"></button>`;
       })
       .join("");
 
@@ -221,22 +235,21 @@
   }
 
   function renderExplore() {
-    const user = ReGradeAuth.getCurrentUser();
-    const unlocked = new Set((user && user.unlockedPlanets) || ["earth"]);
+    const user = Auth.getCurrentUser();
     const cards = document.getElementById("planet-cards");
     cards.innerHTML = PLANETS.map((p) => {
-      const open = unlocked.has(p.id) || p.unlocked;
+      const open = isUnlocked(user, p.id);
       return `
         <article class="planet-card ${open ? "" : "is-locked"}">
-          <div class="planet-orb ${p.rings ? "rings" : ""}" style="--p:${p.colour}"></div>
+          <div class="planet-orb ${p.rings ? "rings" : ""} ${p.sun ? "is-sun" : ""}" style="--p:${p.colour}"></div>
           <div class="planet-card-body">
             <h3>${open ? p.name : "???"}</h3>
             <p class="game-name">${open ? p.game : "A new world awaits"}</p>
-            <p>${open ? p.blurb : "Coming soon"}</p>
+            <p>${open ? p.blurb : "Score " + Auth.UNLOCK_SCORE + "+ stars in the previous world to unlock"}</p>
             ${
               open && p.playable
                 ? `<button class="btn btn-regrade btn-block planet-play" type="button" data-play="${p.id}">Play</button>`
-                : `<button class="btn btn-ghost btn-block" type="button" disabled>${open ? "Soon" : "Locked"}</button>`
+                : `<button class="btn btn-ghost btn-block" type="button" disabled>Locked</button>`
             }
           </div>
         </article>`;
@@ -248,13 +261,12 @@
   }
 
   function openPlanet(id) {
+    const user = Auth.getCurrentUser();
     const p = PLANETS.find((x) => x.id === id);
-    const user = ReGradeAuth.getCurrentUser();
-    const unlocked = new Set((user && user.unlockedPlanets) || ["earth"]);
     if (!p) return;
-    if (!(unlocked.has(id) || p.unlocked) || !p.playable) {
-      showScreen("explore");
+    if (!isUnlocked(user, id) || !p.playable) {
       renderExplore();
+      showScreen("explore");
       return;
     }
     startPlanetPlay(id);
@@ -262,20 +274,20 @@
 
   function startPlanetPlay(id) {
     selectedPlanetId = id;
-    const user = ReGradeAuth.getCurrentUser();
+    const user = Auth.getCurrentUser();
     document.getElementById("player-name").value = (user && user.name) || "Player";
     showScreen("connect");
   }
 
   function renderStats() {
-    const user = ReGradeAuth.getCurrentUser();
+    const user = Auth.getCurrentUser();
     if (!user) return;
     document.getElementById("stat-stars").textContent = String(user.stars || 0);
-    document.getElementById("stat-planets").textContent = String((user.unlockedPlanets || ["earth"]).length);
+    document.getElementById("stat-planets").textContent = String((user.unlockedPlanets || ["sun"]).length);
     const list = document.getElementById("history-list");
     const history = user.history || [];
     if (!history.length) {
-      list.innerHTML = `<p class="muted">No sessions yet — play Star Slash to collect stars.</p>`;
+      list.innerHTML = `<p class="muted">No sessions yet — play Star Slash on the Sun to begin.</p>`;
       return;
     }
     list.innerHTML = history
@@ -323,6 +335,19 @@
     });
   }
 
+  function goNextTester() {
+    if (sync) {
+      sync.destroy();
+      sync = null;
+    }
+    Auth.resetForNextTester();
+    setConnected(false, "Not connected");
+    lastAwardedScore = null;
+    lastUnlockMessage = "";
+    showScreen("welcome");
+    refreshWelcomeMascot();
+  }
+
   // ---- auth buttons ----
   document.getElementById("btn-goto-login").addEventListener("click", () => showScreen("login"));
   document.getElementById("btn-goto-signup").addEventListener("click", () => showScreen("signup"));
@@ -335,7 +360,7 @@
     const err = document.getElementById("login-error");
     err.textContent = "";
     try {
-      ReGradeAuth.login({
+      Auth.login({
         emailOrPhone: document.getElementById("login-id").value,
         password: document.getElementById("login-pass").value,
       });
@@ -349,7 +374,7 @@
     const err = document.getElementById("signup-error");
     err.textContent = "";
     try {
-      ReGradeAuth.signup({
+      Auth.signup({
         emailOrPhone: document.getElementById("signup-id").value,
         password: document.getElementById("signup-pass").value,
       });
@@ -376,12 +401,8 @@
       err.textContent = "Tell us what to call you.";
       return;
     }
-    ReGradeAuth.updateCurrentUser({
-      name,
-      armPreference,
-      onboardedProfile: true,
-    });
-    alienDraft = ReGradeAlien.mergeAlien(ReGradeAuth.getCurrentUser().alien);
+    Auth.updateCurrentUser({ name, armPreference, onboardedProfile: true });
+    alienDraft = ReGradeAlien.mergeAlien(Auth.getCurrentUser().alien);
     renderAlienCreator();
     showScreen("alien");
   });
@@ -394,12 +415,11 @@
   });
 
   document.getElementById("btn-alien-save").addEventListener("click", () => {
-    ReGradeAuth.updateCurrentUser({ alien: alienDraft, onboarded: true });
+    Auth.updateCurrentUser({ alien: alienDraft, onboarded: true });
     renderHome();
     showScreen("home");
   });
 
-  // ---- nav ----
   bottomNav.querySelectorAll(".nav-item").forEach((btn) => {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.nav;
@@ -416,21 +436,21 @@
   });
 
   document.getElementById("btn-edit-alien").addEventListener("click", () => {
-    const user = ReGradeAuth.getCurrentUser();
+    const user = Auth.getCurrentUser();
     alienDraft = ReGradeAlien.mergeAlien(user && user.alien);
     renderAlienCreator();
     showScreen("alien");
   });
 
   document.getElementById("btn-edit-profile").addEventListener("click", () => {
-    const user = ReGradeAuth.getCurrentUser();
+    const user = Auth.getCurrentUser();
     document.getElementById("profile-name").value = (user && user.name) || "";
     ReGradeAlien.renderInto(document.getElementById("profile-avatar-preview"), (user && user.alien) || alienDraft, 88);
     showScreen("profile");
   });
 
   document.getElementById("btn-logout").addEventListener("click", () => {
-    ReGradeAuth.logout();
+    Auth.logout();
     if (sync) {
       sync.destroy();
       sync = null;
@@ -439,12 +459,24 @@
     showScreen("welcome");
   });
 
+  document.getElementById("btn-next-tester").addEventListener("click", goNextTester);
+  document.getElementById("btn-reset-all").addEventListener("click", () => {
+    if (!confirm("Clear all Stella Nova demo accounts on this device?")) return;
+    if (sync) {
+      sync.destroy();
+      sync = null;
+    }
+    Auth.resetAllDemoData();
+    setConnected(false, "Not connected");
+    showScreen("welcome");
+    refreshWelcomeMascot();
+  });
+
   document.getElementById("btn-connect-back").addEventListener("click", () => {
     renderExplore();
     showScreen("explore");
   });
 
-  // ---- game sync (existing) ----
   function getRoomFromInputs() {
     return roomInputs.map((el) => el.value.trim().toUpperCase()).join("");
   }
@@ -481,16 +513,13 @@
     document.getElementById("live-timer").textContent = timeLeft + "s left";
     document.getElementById("results-score").textContent = String(score);
 
-    const starsEarned = Math.max(1, Math.round(score / 10));
-    document.getElementById("results-meta").textContent = "Stars earned this round: " + starsEarned;
-
     if (state.phase === "countdown") {
       showScreen("live");
       liveTitle.textContent = "Get ready… " + (state.countdown || 3);
       setConnected(true, "Room " + room);
     } else if (state.phase === "playing") {
       showScreen("live");
-      liveTitle.textContent = "You’re playing on TV. Look up and play!";
+      liveTitle.textContent = "You’re playing on TV. Look up and slash stars!";
       setConnected(true, "Live · " + room);
     } else if (state.phase === "paused") {
       showScreen("paused");
@@ -498,9 +527,27 @@
     } else if (state.phase === "over") {
       if (lastAwardedScore !== score) {
         lastAwardedScore = score;
-        ReGradeAuth.addStars(starsEarned);
+        Auth.addStars(score);
+        const progress = Auth.applyRoundProgress(selectedPlanetId, score);
+        const world = PLANETS.find((p) => p.id === selectedPlanetId);
         document.getElementById("results-blurb").textContent =
-          "You collected " + starsEarned + " stars!";
+          "You collected " + score + " stars" + (world ? " on " + world.name : "") + "!";
+
+        const unlockEl = document.getElementById("results-unlock");
+        if (progress && progress.unlockedId) {
+          const next = PLANETS.find((p) => p.id === progress.unlockedId);
+          lastUnlockMessage = next ? "New world unlocked: " + next.name + "!" : "";
+          unlockEl.textContent = lastUnlockMessage;
+          unlockEl.hidden = false;
+        } else if (score < Auth.UNLOCK_SCORE) {
+          unlockEl.textContent =
+            "Score " + Auth.UNLOCK_SCORE + "+ stars in one round to unlock the next world.";
+          unlockEl.hidden = false;
+        } else {
+          unlockEl.hidden = true;
+        }
+        document.getElementById("results-meta").textContent =
+          "Need " + Auth.UNLOCK_SCORE + "+ in a round to unlock the next planet.";
       }
       showScreen("results");
       setConnected(true, "Done · " + room);
@@ -518,7 +565,7 @@
       connectError.textContent = "Enter the full 4-character room code from the TV tab.";
       return;
     }
-    ReGradeAuth.updateCurrentUser({ name });
+    Auth.updateCurrentUser({ name });
     localStorage.setItem("ph-player-name", name);
 
     if (sync) {
@@ -572,6 +619,10 @@
     renderHome();
     showScreen("home");
     setConnected(!!sync, sync ? "Connected · " + room : "Not connected");
+  });
+  document.getElementById("btn-results-next-tester").addEventListener("click", () => {
+    sendCommand("home");
+    goNextTester();
   });
 
   wireRoomInputs();

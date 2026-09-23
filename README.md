@@ -1,27 +1,21 @@
-# ReGrade · Planet Hockey
+# Stella Nova
 
-Class prototype for upper-body rehab play.
+Upper-body rehab class prototype: create an alien, explore a solar-system home, then slash **stars** on the TV with PoseNet (30 seconds).
 
-## Screens
+## Fair / user testing
+- Accounts are local only (`localStorage`) — no backend
+- After a round: **Continue (same tester)** or **Reset for next tester**
+- Settings also has **Clear all demo data**
 
-### Tablet (`tablet.html`)
-1. Welcome / Log in / Create account (localStorage auth)
-2. Profile (“Make it yours”)
-3. Alien avatar creator
-4. Solar-system home + bottom nav (Home · Explore · Stats · Settings)
-5. Planet select → room code connect → live / pause → results
+## Progression
+- Only the **Sun** starts unlocked
+- Score **12+ stars** in a finished round to unlock the next world (Mercury → … → Neptune)
+- Picking a world still uses the room-code → TV play flow
 
-### TV (`game.html`)
-Webcam PoseNet **Star Slash** — slash solar-system planets for 30 seconds. Syncs with the tablet via room code on the same computer.
-
-## Run locally
-
+## Run
 ```bash
 python3 -m http.server 8080
 ```
-
 - Landing: http://localhost:8080/
 - Tablet: http://localhost:8080/tablet.html
 - TV: http://localhost:8080/game.html
-
-Demo keys on TV: `P` start · `Space` pause · `R` restart · click-drag to slash without PoseNet.

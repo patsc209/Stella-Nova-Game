@@ -1081,3 +1081,18 @@ a {
   line-height: 1;
 }
 
+
+.unlock-banner {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #efeaff;
+  color: var(--regrade);
+  font-weight: 700;
+  text-align: center;
+}
+
+.planet-orb.is-sun,
+.sol-body.sun {
+  background: radial-gradient(circle at 35% 30%, #ffe9a0, #ffb84d 55%, #ff8a3d) !important;
+}

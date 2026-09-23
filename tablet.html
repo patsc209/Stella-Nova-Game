@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>ReGrade — Tablet</title>
+    <title>Stella Nova — Tablet</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -12,10 +12,10 @@
     />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
-  <body class="tablet-body regrade">
+  <body class="tablet-body regrade stella">
     <div class="tablet-shell has-nav" id="tablet-shell">
       <header class="tablet-top" id="app-topbar">
-        <div class="tablet-brand">ReGrade <span class="star-mark">✦</span></div>
+        <div class="tablet-brand">Stella Nova <span class="star-mark">✦</span></div>
         <div class="pill">
           <span class="conn-dot" id="conn-dot"></span>
           <span id="conn-label">Not connected</span>
@@ -25,7 +25,7 @@
       <!-- WELCOME -->
       <section class="screen active" id="screen-welcome" data-screen="welcome">
         <div class="welcome-hero">
-          <p class="brand-lg">ReGrade <span class="star-mark">✦</span></p>
+          <p class="brand-lg">Stella Nova <span class="star-mark">✦</span></p>
           <p class="tag-soft">Play · Explore · Your Universe</p>
           <div class="mascot-wrap" id="welcome-mascot"></div>
           <div class="stack welcome-actions">
@@ -164,6 +164,8 @@
             <div class="settings-row static"><span>Accessibility</span><span class="muted">Prototype</span></div>
             <div class="settings-row static"><span>Sound</span><span class="muted">On</span></div>
             <button class="settings-row danger" id="btn-logout" type="button"><span>Log out</span><span>›</span></button>
+            <button class="settings-row danger" id="btn-next-tester" type="button"><span>Reset for next tester</span><span>›</span></button>
+            <button class="settings-row danger" id="btn-reset-all" type="button"><span>Clear all demo data</span><span>›</span></button>
           </div>
         </div>
       </section>
@@ -194,7 +196,7 @@
       <section class="screen" id="screen-live" data-screen="live">
         <div class="live-card">
           <div class="orbit" aria-hidden="true"></div>
-          <h1 id="live-title">You’re playing on TV. Look up and play!</h1>
+          <h1 id="live-title">You’re playing on TV. Look up and slash stars!</h1>
           <div class="score-live" id="live-score">0</div>
           <div class="timer-live" id="live-timer">30s left</div>
           <button class="btn btn-accent fab-pause" id="btn-pause" type="button">Pause Game</button>
@@ -216,10 +218,12 @@
           <h1>Nice work!</h1>
           <p id="results-blurb">You collected stars!</p>
           <div class="results-score" id="results-score">0</div>
-          <div class="results-meta" id="results-meta">Stars earned this round: 0</div>
+          <div class="results-meta" id="results-meta">Need 12+ stars in a round to unlock the next world.</div>
+          <p class="unlock-banner" id="results-unlock" hidden></p>
           <div class="stack">
             <button class="btn btn-accent btn-block" id="btn-play-again" type="button">Play again</button>
-            <button class="btn btn-ghost btn-block" id="btn-results-home" type="button">Back to Home</button>
+            <button class="btn btn-regrade btn-block" id="btn-results-home" type="button">Continue (same tester)</button>
+            <button class="btn btn-ghost btn-block" id="btn-results-next-tester" type="button">Reset for next tester</button>
           </div>
         </div>
       </section>
