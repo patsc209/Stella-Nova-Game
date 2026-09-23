@@ -193,6 +193,7 @@ a {
   font-size: clamp(2.4rem, 7vw, 4rem);
   letter-spacing: 0.28em;
   font-weight: 700;
+  color: #fff;
   padding: 14px 8px 14px 22px;
   border-radius: 18px;
   background: rgba(0, 0, 0, 0.35);
