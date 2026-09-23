@@ -21,12 +21,17 @@ let countdownTick = 0;
 let statusEl;
 
 const TRAIL_MAX_LEN = 14;
-const HIT_RADIUS_PAD = 12;
+// Slightly larger hit pad helps when standing farther from a big screen
+const HIT_RADIUS_PAD = 18;
 const GAME_SECONDS = 30;
+const WRIST_MIN_SCORE = 0.15;
+const WRIST_GOOD_SCORE = 0.32;
+const HAND_SMOOTH = 0.55; // higher = snappier slash response
 
 let sync = null;
 let roomCode = "";
 let playerName = "Player";
+let smoothHands = { left: null, right: null };
 
 function setup() {
   const canvas = createCanvas(windowWidth, windowHeight);
@@ -37,14 +42,28 @@ function setup() {
   video = createCapture(VIDEO, () => {
     setStatus("Camera ready — loading PoseNet…");
   });
-  video.size(Math.min(1280, windowWidth), Math.min(720, windowHeight));
+  // Match video tracking space to the full screen (key far-distance /
+  // big-TV fix from the updated Star Slash sketch). A smaller fixed video
+  // made arm reaches near the edges barely move in tracked coordinates.
+  video.size(width, height);
   video.hide();
 
-  poseNet = ml5.poseNet(video, () => {
-    modelLoaded = true;
-    setStatus("PoseNet ready");
-    hideStatusSoon();
-  });
+  poseNet = ml5.poseNet(
+    video,
+    {
+      detectionType: "single",
+      maxPoseDetections: 1,
+      minConfidence: 0.15,
+      scoreThreshold: 0.2,
+      imageScaleFactor: 0.6,
+      outputStride: 16,
+    },
+    () => {
+      modelLoaded = true;
+      setStatus("PoseNet ready");
+      hideStatusSoon();
+    }
+  );
   poseNet.on("pose", (results) => {
     poses = results;
   });
@@ -56,6 +75,7 @@ function setup() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  if (video) video.size(width, height);
 }
 
 function setStatus(text) {
@@ -159,6 +179,7 @@ function startCountdown() {
   stars = [];
   particles = [];
   trails = { left: [], right: [] };
+  smoothHands = { left: null, right: null };
   score = 0;
   timeLeft = GAME_SECONDS;
   spawnInterval = 750;
@@ -173,6 +194,7 @@ function resetToLobby() {
   stars = [];
   particles = [];
   trails = { left: [], right: [] };
+  smoothHands = { left: null, right: null };
   score = 0;
   timeLeft = GAME_SECONDS;
   setPhase("lobby");
@@ -189,17 +211,13 @@ function updateLobbyUI() {
 function draw() {
   background(5, 6, 18);
 
+  // Mirrored full-bleed feed — same coordinate space as PoseNet tracking
   push();
   translate(width, 0);
   scale(-1, 1);
   if (video) {
-    const vw = video.width;
-    const vh = video.height;
-    const scaleFit = Math.max(width / vw, height / vh);
-    const dw = vw * scaleFit;
-    const dh = vh * scaleFit;
     tint(255, 160);
-    image(video, (width - dw) / 2, (height - dh) / 2, dw, dh);
+    image(video, 0, 0, width, height);
     noTint();
   }
   pop();
@@ -286,32 +304,139 @@ function drawCountdown() {
   textStyle(NORMAL);
 }
 
-function getMirroredKeypoint(pose, partName) {
-  const kp = pose.pose.keypoints.find((k) => k.part === partName);
-  if (kp && kp.score > 0.25) {
-    const mapped = mapVideoToCanvas(kp.position.x, kp.position.y);
-    return { x: width - mapped.x, y: mapped.y };
+function findKeypoint(pose, partName) {
+  return pose.pose.keypoints.find((k) => k.part === partName) || null;
+}
+
+function mapKeypointToCanvas(kp) {
+  // PoseNet points are in video element space; rescale into canvas space so
+  // tracking stays aligned after resizes / fullscreen on any TV size.
+  const scaleX = width / Math.max(1, video.width);
+  const scaleY = height / Math.max(1, video.height);
+  return {
+    x: width - kp.position.x * scaleX,
+    y: kp.position.y * scaleY,
+    score: kp.score,
+  };
+}
+
+function getMirroredKeypoint(pose, partName, minScore = WRIST_MIN_SCORE) {
+  const kp = findKeypoint(pose, partName);
+  if (kp && kp.score > minScore) return mapKeypointToCanvas(kp);
+  return null;
+}
+
+function estimateWrist(pose, side) {
+  // Prefer a confident wrist; if far-away confidence dips, extend from the
+  // shoulder→elbow ray so the slash tip still tracks the hand.
+  const wrist = findKeypoint(pose, side + "Wrist");
+  const elbow = findKeypoint(pose, side + "Elbow");
+  const shoulder = findKeypoint(pose, side + "Shoulder");
+
+  if (wrist && wrist.score >= WRIST_GOOD_SCORE) {
+    return mapKeypointToCanvas(wrist);
+  }
+
+  if (wrist && wrist.score >= WRIST_MIN_SCORE && elbow && elbow.score > 0.2) {
+    const w = mapKeypointToCanvas(wrist);
+    const e = mapKeypointToCanvas(elbow);
+    // Pull slightly toward the forearm tip to damp PoseNet wrist jitter
+    return {
+      x: lerp(e.x, w.x, 0.85),
+      y: lerp(e.y, w.y, 0.85),
+      score: wrist.score,
+    };
+  }
+
+  if (elbow && shoulder && elbow.score > 0.22 && shoulder.score > 0.22) {
+    const e = mapKeypointToCanvas(elbow);
+    const s = mapKeypointToCanvas(shoulder);
+    const reach = 0.9;
+    return {
+      x: e.x + (e.x - s.x) * reach,
+      y: e.y + (e.y - s.y) * reach,
+      score: Math.min(elbow.score, shoulder.score),
+    };
+  }
+
+  if (wrist && wrist.score >= WRIST_MIN_SCORE) {
+    return mapKeypointToCanvas(wrist);
   }
   return null;
 }
 
-function mapVideoToCanvas(vx, vy) {
-  const vw = video.width;
-  const vh = video.height;
-  const scaleFit = Math.max(width / vw, height / vh);
-  const dw = vw * scaleFit;
-  const dh = vh * scaleFit;
-  const ox = (width - dw) / 2;
-  const oy = (height - dh) / 2;
-  return { x: ox + vx * scaleFit, y: oy + vy * scaleFit };
+function bodyCenterX(pose) {
+  const ls = getMirroredKeypoint(pose, "leftShoulder", 0.1);
+  const rs = getMirroredKeypoint(pose, "rightShoulder", 0.1);
+  if (ls && rs) return (ls.x + rs.x) / 2;
+  const nose = getMirroredKeypoint(pose, "nose", 0.1);
+  return nose ? nose.x : width / 2;
+}
+
+function pickBestPose(results) {
+  if (!results || results.length === 0) return null;
+  let best = results[0];
+  let bestScore = best.pose && best.pose.score != null ? best.pose.score : 0;
+  for (let i = 1; i < results.length; i++) {
+    const s = results[i].pose && results[i].pose.score != null ? results[i].pose.score : 0;
+    if (s > bestScore) {
+      best = results[i];
+      bestScore = s;
+    }
+  }
+  return best;
+}
+
+function resolveHands(pose) {
+  let leftPt = estimateWrist(pose, "left");
+  let rightPt = estimateWrist(pose, "right");
+
+  // At distance PoseNet often swaps left/right labels. Re-assign by screen
+  // side after mirroring so each trail stays on the correct side of the body.
+  if (leftPt && rightPt && leftPt.x > rightPt.x) {
+    const tmp = leftPt;
+    leftPt = rightPt;
+    rightPt = tmp;
+  } else if (leftPt && !rightPt) {
+    if (leftPt.x > bodyCenterX(pose)) {
+      rightPt = leftPt;
+      leftPt = null;
+    }
+  } else if (rightPt && !leftPt) {
+    if (rightPt.x < bodyCenterX(pose)) {
+      leftPt = rightPt;
+      rightPt = null;
+    }
+  }
+
+  return { leftPt, rightPt };
+}
+
+function smoothHand(side, pt) {
+  if (!pt) {
+    smoothHands[side] = null;
+    return null;
+  }
+  if (!smoothHands[side]) {
+    smoothHands[side] = { x: pt.x, y: pt.y };
+    return { x: pt.x, y: pt.y };
+  }
+  smoothHands[side].x = lerp(smoothHands[side].x, pt.x, HAND_SMOOTH);
+  smoothHands[side].y = lerp(smoothHands[side].y, pt.y, HAND_SMOOTH);
+  return { x: smoothHands[side].x, y: smoothHands[side].y };
 }
 
 function updateHandTrails() {
   let leftPt = null;
   let rightPt = null;
-  if (poses.length > 0) {
-    leftPt = getMirroredKeypoint(poses[0], "leftWrist");
-    rightPt = getMirroredKeypoint(poses[0], "rightWrist");
+  const pose = pickBestPose(poses);
+  if (pose) {
+    const hands = resolveHands(pose);
+    leftPt = smoothHand("left", hands.leftPt);
+    rightPt = smoothHand("right", hands.rightPt);
+  } else {
+    smoothHands.left = null;
+    smoothHands.right = null;
   }
   if (!leftPt && !rightPt && mouseIsPressed) {
     rightPt = { x: mouseX, y: mouseY };
