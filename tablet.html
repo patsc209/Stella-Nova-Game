@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Planet Hockey — Tablet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Sora:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body class="tablet-body">
+    <div class="tablet-shell">
+      <header class="tablet-top">
+        <div class="tablet-brand">Planet Hockey</div>
+        <div class="pill">
+          <span class="conn-dot" id="conn-dot"></span>
+          <span id="conn-label">Not connected</span>
+        </div>
+      </header>
+
+      <!-- HOME -->
+      <section class="screen active" id="screen-home" data-screen="home">
+        <div class="hero-panel">
+          <p class="eyebrow">Ready?</p>
+          <h1>Planet Hockey</h1>
+          <p>Upper-body slash session. Pop planets for points — 30 seconds.</p>
+          <div class="streak" aria-hidden="true">🔥 Your streak · 4 days</div>
+          <button class="btn btn-primary btn-block" id="btn-go-connect" type="button">PLAY</button>
+        </div>
+        <p class="nav-hint">Open the TV game in another tab first, then connect here.</p>
+      </section>
+
+      <!-- CONNECT -->
+      <section class="screen" id="screen-connect" data-screen="connect">
+        <div class="panel">
+          <h1>Connect to your screen</h1>
+          <p>Type the 4-character code shown on the TV / game tab.</p>
+
+          <label class="field-label" for="player-name">Your name</label>
+          <input class="name-input" id="player-name" maxlength="16" placeholder="Izzy" autocomplete="nickname" />
+
+          <label class="field-label">Room code</label>
+          <div class="room-inputs" id="room-inputs">
+            <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 1" />
+            <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 2" />
+            <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 3" />
+            <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 4" />
+          </div>
+
+          <div class="stack">
+            <button class="btn btn-accent btn-block" id="btn-connect" type="button">Join &amp; start</button>
+            <button class="btn btn-ghost btn-block" id="btn-back-home" type="button">Back</button>
+          </div>
+          <p class="nav-hint" id="connect-error" style="color: #d64545"></p>
+        </div>
+      </section>
+
+      <!-- LIVE / PLAYING -->
+      <section class="screen" id="screen-live" data-screen="live">
+        <div class="live-card">
+          <div class="orbit" aria-hidden="true"></div>
+          <h1 id="live-title">You’re playing on TV. Look up and play!</h1>
+          <div class="score-live" id="live-score">0</div>
+          <div class="timer-live" id="live-timer">30s left</div>
+          <button class="btn btn-accent fab-pause" id="btn-pause" type="button">Pause Game</button>
+        </div>
+      </section>
+
+      <!-- PAUSED -->
+      <section class="screen" id="screen-paused" data-screen="paused">
+        <div class="live-card">
+          <h1>Game paused. Take a break!</h1>
+          <p>Rest those arms, then continue when you’re ready.</p>
+          <button class="btn btn-primary btn-block" id="btn-resume" type="button">Continue to play</button>
+        </div>
+      </section>
+
+      <!-- RESULTS -->
+      <section class="screen" id="screen-results" data-screen="results">
+        <div class="panel" style="flex: 1">
+          <h1>Nice work!</h1>
+          <p id="results-blurb">Session complete — great upper-body effort.</p>
+          <svg class="chart" viewBox="0 0 320 90" aria-hidden="true">
+            <polyline
+              fill="none"
+              stroke="#5b8cff"
+              stroke-width="4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              points="10,70 55,62 100,48 145,52 190,30 235,36 280,18 310,22"
+            />
+            <circle cx="310" cy="22" r="6" fill="#ff7a59" />
+          </svg>
+          <div class="results-score" id="results-score">0</div>
+          <div class="results-meta" id="results-meta">Your best: 0</div>
+          <div class="stack">
+            <button class="btn btn-accent btn-block" id="btn-play-again" type="button">Play again</button>
+            <button class="btn btn-ghost btn-block" id="btn-results-home" type="button">Back to Home</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="js/sync.js"></script>
+    <script src="js/tablet.js"></script>
+  </body>
+</html>
