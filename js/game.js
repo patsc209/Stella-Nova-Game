@@ -102,7 +102,7 @@ function initRoomAndSync() {
     if (msg.type === "state" && msg.from === "tablet" && msg.state) {
       if (msg.state.playerName) playerName = msg.state.playerName;
       // If tablet picked a different game, hop to the unified TV mode for it
-      if (msg.state.gameType === "orbit") {
+      if (msg.state.gameType === "orbit" && gamePhase === "lobby") {
         const next = new URL(window.location.href);
         next.searchParams.set("mode", "orbit");
         next.searchParams.delete("autostart");

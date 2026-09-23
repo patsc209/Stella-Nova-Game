@@ -399,6 +399,7 @@
     const multiCard = document.querySelector(".mode-card.mode-multi");
     const multiBtn = document.getElementById("btn-mode-multi");
     const soloOnly = world && world.gameType === "stars";
+    if (soloOnly) selectedPlayMode = "solo";
     if (multiCard) multiCard.classList.toggle("is-disabled", !!soloOnly);
     if (multiBtn) {
       multiBtn.disabled = !!soloOnly;
@@ -871,6 +872,9 @@
       if (msg.type === "hello" && msg.role === "game") setConnected(true, "TV ready · " + room);
     });
     sync.send({ type: "command", action: "play" });
+    // Resend play a couple times in case the TV is mid-switch between games
+    setTimeout(() => sync && sync.send({ type: "command", action: "play" }), 900);
+    setTimeout(() => sync && sync.send({ type: "command", action: "play" }), 1800);
     showScreen("live");
     document.getElementById("live-title").textContent = "Starting…";
     applyState(sync.getState());

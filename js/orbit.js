@@ -121,7 +121,7 @@ function initRoomAndSync() {
         playMode = msg.state.playMode;
         forceSoloAI = playMode !== "multi";
       }
-      if (msg.state.gameType === "stars") {
+      if (msg.state.gameType === "stars" && gameState === "lobby") {
         const next = new URL(window.location.href);
         next.searchParams.set("mode", "stars");
         next.searchParams.delete("autostart");
