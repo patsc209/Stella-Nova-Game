@@ -1,10 +1,10 @@
 /**
- * Planet Hockey — same-computer tab sync via BroadcastChannel + localStorage.
- * Room codes let the tablet and TV screens stay in lockstep.
+ * Stella Nova sync — works across devices via WebSocket.
+ * Falls back to BroadcastChannel + localStorage for same-computer tabs.
  */
 (function (global) {
-  const STORAGE_PREFIX = "planet-hockey:";
-  const CHANNEL_PREFIX = "planet-hockey-";
+  const STORAGE_PREFIX = "stella-nova:";
+  const CHANNEL_PREFIX = "stella-nova-";
 
   function storageKey(room) {
     return STORAGE_PREFIX + room.toUpperCase();
@@ -34,23 +34,35 @@
     return code;
   }
 
+  function wsUrl() {
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    return proto + "//" + location.host + "/sync";
+  }
+
   function createSync(roomCode, role, onMessage) {
     const room = String(roomCode || "").toUpperCase();
     if (!room || room.length !== 4) {
       throw new Error("Room code must be 4 characters");
     }
 
-    const channel = new BroadcastChannel(CHANNEL_PREFIX + room);
     const listeners = [];
+    let channel = null;
+    let socket = null;
+    let destroyed = false;
+    let reconnectTimer = null;
 
     function emit(msg) {
       listeners.forEach((fn) => fn(msg));
       if (typeof onMessage === "function") onMessage(msg);
     }
 
-    channel.onmessage = (event) => {
-      emit(event.data);
-    };
+    // Same-device fallback
+    try {
+      channel = new BroadcastChannel(CHANNEL_PREFIX + room);
+      channel.onmessage = (event) => emit(event.data);
+    } catch (_) {
+      channel = null;
+    }
 
     window.addEventListener("storage", (event) => {
       if (event.key === storageKey(room) && event.newValue) {
@@ -62,6 +74,61 @@
         }
       }
     });
+
+    function connectSocket() {
+      if (destroyed) return;
+      try {
+        socket = new WebSocket(wsUrl());
+      } catch (_) {
+        socket = null;
+        return;
+      }
+
+      socket.addEventListener("open", () => {
+        socket.send(JSON.stringify({ type: "join", room, role }));
+      });
+
+      socket.addEventListener("message", (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "joined" && msg.state) {
+            saveState(room, msg.state);
+          }
+          if (msg.type === "state" && msg.state) {
+            saveState(room, msg.state);
+          }
+          emit(msg);
+        } catch (_) {
+          /* ignore */
+        }
+      });
+
+      socket.addEventListener("close", () => {
+        socket = null;
+        if (!destroyed) {
+          reconnectTimer = setTimeout(connectSocket, 1200);
+        }
+      });
+
+      socket.addEventListener("error", () => {
+        /* close handler will reconnect */
+      });
+    }
+
+    connectSocket();
+
+    function wireSend(msg) {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(msg));
+      }
+      if (channel) {
+        try {
+          channel.postMessage(msg);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    }
 
     function publish(partialState) {
       const current = loadState(room) || {
@@ -75,14 +142,14 @@
         tabletReady: false,
       };
       const next = saveState(room, Object.assign({}, current, partialState, { room }));
-      const msg = { type: "state", from: role, state: next };
-      channel.postMessage(msg);
+      const msg = { type: "state", from: role, room, state: next };
+      wireSend(msg);
       return next;
     }
 
     function send(message) {
       const msg = Object.assign({ from: role, room }, message);
-      channel.postMessage(msg);
+      wireSend(msg);
       return msg;
     }
 
@@ -99,10 +166,25 @@
     }
 
     function destroy() {
-      channel.close();
+      destroyed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (socket) {
+        try {
+          socket.close();
+        } catch (_) {
+          /* ignore */
+        }
+      }
+      if (channel) {
+        try {
+          channel.close();
+        } catch (_) {
+          /* ignore */
+        }
+      }
     }
 
-    // Announce presence
+    // Announce presence (local + network once connected)
     send({ type: "hello", role });
 
     return {

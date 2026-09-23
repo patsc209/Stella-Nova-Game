@@ -1,0 +1,12 @@
+{
+  "name": "stella-nova",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stella Nova dual-screen rehab prototype",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
