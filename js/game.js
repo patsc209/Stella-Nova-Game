@@ -21,12 +21,14 @@ let countdownTick = 0;
 let statusEl;
 
 const TRAIL_MAX_LEN = 14;
-// Slightly larger hit pad helps when standing farther from a big screen
 const HIT_RADIUS_PAD = 18;
 const GAME_SECONDS = 30;
 const WRIST_MIN_SCORE = 0.15;
 const WRIST_GOOD_SCORE = 0.32;
-const HAND_SMOOTH = 0.55; // higher = snappier slash response
+const HAND_SMOOTH = 0.55;
+// Palm/fist test: push the tip past the wrist along the forearm (PoseNet
+// has no palm keypoints — this approximates knuckles / open palm).
+const FIST_EXTEND = 0.55;
 
 let sync = null;
 let roomCode = "";
@@ -230,6 +232,11 @@ function draw() {
       textAlign(CENTER, CENTER);
       textSize(22);
       text("Warming up camera & PoseNet…", width / 2, height - 48);
+    } else {
+      fill(255, 210, 120, 220);
+      textAlign(LEFT, BOTTOM);
+      textSize(14);
+      text("TEST build · palm / fist tips (no zoom)", 18, height - 18);
     }
     return;
   }
@@ -326,43 +333,31 @@ function getMirroredKeypoint(pose, partName, minScore = WRIST_MIN_SCORE) {
   return null;
 }
 
-function estimateWrist(pose, side) {
-  // Prefer a confident wrist; if far-away confidence dips, extend from the
-  // shoulder→elbow ray so the slash tip still tracks the hand.
+function estimatePalmFist(pose, side) {
+  // Palm/fist tip ≈ wrist extended past itself along elbow → wrist.
+  // Requires a real wrist reading — never use elbow/shoulder alone (chest lock).
   const wrist = findKeypoint(pose, side + "Wrist");
   const elbow = findKeypoint(pose, side + "Elbow");
-  const shoulder = findKeypoint(pose, side + "Shoulder");
+  if (!wrist || wrist.score < WRIST_MIN_SCORE) return null;
 
-  if (wrist && wrist.score >= WRIST_GOOD_SCORE) {
-    return mapKeypointToCanvas(wrist);
-  }
-
-  if (wrist && wrist.score >= WRIST_MIN_SCORE && elbow && elbow.score > 0.2) {
-    const w = mapKeypointToCanvas(wrist);
+  const w = mapKeypointToCanvas(wrist);
+  if (elbow && elbow.score > 0.18) {
     const e = mapKeypointToCanvas(elbow);
-    // Pull slightly toward the forearm tip to damp PoseNet wrist jitter
+    const dx = w.x - e.x;
+    const dy = w.y - e.y;
+    const forearm = Math.hypot(dx, dy);
+    const minForearm = Math.min(width, height) * 0.03;
+    if (forearm < minForearm && wrist.score < WRIST_GOOD_SCORE) {
+      return null;
+    }
+    const extend = wrist.score >= WRIST_GOOD_SCORE ? FIST_EXTEND : FIST_EXTEND * 0.7;
     return {
-      x: lerp(e.x, w.x, 0.85),
-      y: lerp(e.y, w.y, 0.85),
+      x: w.x + dx * extend,
+      y: w.y + dy * extend,
       score: wrist.score,
     };
   }
-
-  if (elbow && shoulder && elbow.score > 0.22 && shoulder.score > 0.22) {
-    const e = mapKeypointToCanvas(elbow);
-    const s = mapKeypointToCanvas(shoulder);
-    const reach = 0.9;
-    return {
-      x: e.x + (e.x - s.x) * reach,
-      y: e.y + (e.y - s.y) * reach,
-      score: Math.min(elbow.score, shoulder.score),
-    };
-  }
-
-  if (wrist && wrist.score >= WRIST_MIN_SCORE) {
-    return mapKeypointToCanvas(wrist);
-  }
-  return null;
+  return { x: w.x, y: w.y, score: wrist.score };
 }
 
 function bodyCenterX(pose) {
@@ -388,8 +383,8 @@ function pickBestPose(results) {
 }
 
 function resolveHands(pose) {
-  let leftPt = estimateWrist(pose, "left");
-  let rightPt = estimateWrist(pose, "right");
+  let leftPt = estimatePalmFist(pose, "left");
+  let rightPt = estimatePalmFist(pose, "right");
 
   // At distance PoseNet often swaps left/right labels. Re-assign by screen
   // side after mirroring so each trail stays on the correct side of the body.
@@ -464,14 +459,15 @@ function drawSingleTrail(trail, col) {
     if (trail.length === 1) {
       noStroke();
       fill(red(col), green(col), blue(col), 200);
-      circle(trail[0].x, trail[0].y, 18);
+      // Slightly larger tip = palm / fist target
+      circle(trail[0].x, trail[0].y, 26);
     }
     return;
   }
   noFill();
   for (let i = 1; i < trail.length; i++) {
     const a = map(i, 0, trail.length - 1, 40, 255);
-    const w = map(i, 0, trail.length - 1, 3, 16);
+    const w = map(i, 0, trail.length - 1, 3, 18);
     stroke(red(col), green(col), blue(col), a);
     strokeWeight(w);
     line(trail[i - 1].x, trail[i - 1].y, trail[i].x, trail[i].y);
@@ -479,7 +475,7 @@ function drawSingleTrail(trail, col) {
   const tip = trail[trail.length - 1];
   noStroke();
   fill(red(col), green(col), blue(col), 220);
-  circle(tip.x, tip.y, 22);
+  circle(tip.x, tip.y, 28);
 }
 
 function spawnStars() {

@@ -18,6 +18,8 @@ const MATCH_SECONDS = 90;
 const PADDLE_R = 42;
 const PUCK_R = 15;
 const CONFIDENCE = 0.2;
+// Palm/fist test: extend past the wrist along the forearm toward knuckles
+const FIST_EXTEND = 0.55;
 
 // ---- Tracking smoothing ----
 const SMOOTHING = 0.25;       // lower = smoother but more lag between hand and paddle
@@ -230,6 +232,10 @@ function draw() {
   pop();
 
   if (gameState === "lobby") {
+    fill(255, 210, 120, 220);
+    textAlign(LEFT, BOTTOM);
+    textSize(14);
+    text("TEST build · palm / fist tips (no zoom)", 18, height - 18);
     return;
   }
 
@@ -439,8 +445,7 @@ function getMirroredKeypoint(pose, partName) {
 }
 
 function getHandPoint(pose, paddle) {
-  // Locks onto one wrist per player instead of re-picking every frame —
-  // re-picking on marginal confidence differences is what causes paddle "jumps".
+  // Locks onto one palm/fist tip per player instead of re-picking every frame.
   let rw = pose.pose.keypoints.find(k => k.part === 'rightWrist');
   let lw = pose.pose.keypoints.find(k => k.part === 'leftWrist');
   let rConf = rw ? rw.score : 0;
@@ -463,30 +468,31 @@ function getHandPoint(pose, paddle) {
     paddle.switchCounter = 0;
   }
 
-  let kp = paddle.lockedHand === 'right' ? rw : lw;
-  if (kp && kp.score > CONFIDENCE) {
-    return mapVideoPoint(kp.position.x, kp.position.y);
+  function palmFistFrom(wristKp, side) {
+    if (!wristKp || wristKp.score <= CONFIDENCE) return null;
+    const w = mapVideoPoint(wristKp.position.x, wristKp.position.y);
+    const elbow = pose.pose.keypoints.find(k => k.part === side + 'Elbow');
+    if (elbow && elbow.score > CONFIDENCE) {
+      const e = mapVideoPoint(elbow.position.x, elbow.position.y);
+      const dx = w.x - e.x;
+      const dy = w.y - e.y;
+      return {
+        x: w.x + dx * FIST_EXTEND,
+        y: w.y + dy * FIST_EXTEND,
+      };
+    }
+    return w;
   }
 
-  // locked hand briefly lost — fall back to the other one rather than freezing
-  let altKp = paddle.lockedHand === 'right' ? lw : rw;
-  if (altKp && altKp.score > CONFIDENCE) {
-    return mapVideoPoint(altKp.position.x, altKp.position.y);
-  }
+  const side = paddle.lockedHand;
+  const kp = side === 'right' ? rw : lw;
+  const primary = palmFistFrom(kp, side);
+  if (primary) return primary;
 
-  // Far-distance fallback: extend from elbow when wrist confidence dips
-  const side = paddle.lockedHand || (rConf >= lConf ? 'right' : 'left');
-  const elbow = pose.pose.keypoints.find(k => k.part === side + 'Elbow');
-  const shoulder = pose.pose.keypoints.find(k => k.part === side + 'Shoulder');
-  if (elbow && shoulder && elbow.score > CONFIDENCE && shoulder.score > CONFIDENCE) {
-    const e = mapVideoPoint(elbow.position.x, elbow.position.y);
-    const s = mapVideoPoint(shoulder.position.x, shoulder.position.y);
-    return {
-      x: e.x + (e.x - s.x) * 0.9,
-      y: e.y + (e.y - s.y) * 0.9,
-    };
-  }
-  return null;
+  // locked hand briefly lost — fall back to the other fist rather than freezing
+  const altSide = side === 'right' ? 'left' : 'right';
+  const altKp = side === 'right' ? lw : rw;
+  return palmFistFrom(altKp, altSide);
 }
 
 function smoothPoint(paddle, rawPoint) {
@@ -745,7 +751,7 @@ function drawHUD() {
   textAlign(CENTER, TOP);
   textSize(14);
   fill(255, 200);
-  text("STELLA NOVA · ORBIT RALLY", width / 2, 54);
+  text("STELLA NOVA · ORBIT RALLY · palm/fist TEST", width / 2, 54);
 }
 
 function flash(msg) {
