@@ -1,0 +1,71 @@
+@import 'tailwindcss';
+
+:root {
+  /* Brand tokens */
+  --arctic-powder: #f1f6f4;
+  --mystic-mint: #d9e8e2;
+  --nocturnal-expedition: #114c5a;
+  --oceanic-noir: #172b36;
+  --forsythia: #ffc801;
+  --deep-saffron: #ff9932;
+  --moss: #2e5b42; /* TODO: confirm final moss token */
+  --clay: #9c4a3e;
+
+  /* Typography */
+  --font-ui: 'Switzer', system-ui, sans-serif;
+  /* One-line swap: replace Fraunces with Lastik when available */
+  --font-wordmark: 'Fraunces', Georgia, 'Times New Roman', serif;
+
+  font-family: var(--font-ui);
+  color: var(--oceanic-noir);
+  background-color: var(--arctic-powder);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@theme {
+  --color-arctic-powder: var(--arctic-powder);
+  --color-mystic-mint: var(--mystic-mint);
+  --color-nocturnal-expedition: var(--nocturnal-expedition);
+  --color-oceanic-noir: var(--oceanic-noir);
+  --color-forsythia: var(--forsythia);
+  --color-deep-saffron: var(--deep-saffron);
+  --color-moss: var(--moss);
+  --color-clay: var(--clay);
+
+  --font-ui: var(--font-ui);
+  --font-wordmark: var(--font-wordmark);
+
+  --radius-card: 16px;
+  --radius-control: 10px;
+
+  --shadow-faint: 0 1px 2px rgb(23 43 54 / 0.04);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--nocturnal-expedition);
+  outline-offset: 2px;
+}
