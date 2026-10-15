@@ -1,7 +1,5 @@
 # Genesis
 
-Two prototypes live in this repo.
-
 ## Stella Nova
 
 Upper-body rehab class prototype for a user-testing fair. App files are at the repo root.
@@ -32,15 +30,3 @@ Then open http://localhost:8080/
 ### Fair testing
 
 Local accounts only. Continue or Reset for next tester after a round.
-
-## Elqo — Learner Home Dashboard
-
-Static mockup of the Elqo learner home. The Vite app is in [`elqo/`](elqo/). See [elqo/README.md](elqo/README.md).
-
-```bash
-cd elqo
-npm install
-npm run dev
-```
-
-Dev server binds to `0.0.0.0:43141` → [http://127.0.0.1:43141](http://127.0.0.1:43141)
