@@ -1,31 +1,18 @@
-// Copyright (c) 2018 ml5
-//
-// This software is released under the MIT License.
-// https://opensource.org/licenses/MIT
-
-/* ===
-ml5 Example
-PoseNet (multi-pose) example using p5.js
-Orbit Hockey — timed 2-player air-hockey match
-=== */
+/* Orbit Rally — timed 2-player air-hockey match.
+   Fingertips come from MediaPipe hands (js/hands.js), not PoseNet. */
 
 let video;
-let poseNet;
-let poses = [];
+let handsTracker = null;
+let modelLoaded = false;
+let livePeople = 0;
 
 // ---- Match settings ----
 const MATCH_SECONDS = 90;
 const PADDLE_R = 42;
 const PUCK_R = 15;
-const CONFIDENCE = 0.2;
-// Palm/fist test: extend past the wrist along the forearm toward knuckles
-const FIST_EXTEND = 0.55;
-
 // ---- Tracking smoothing ----
 const SMOOTHING = 0.25;       // lower = smoother but more lag between hand and paddle
-const HISTORY_LEN = 6;        // frames averaged to cut down PoseNet jitter
-const HAND_SWITCH_MARGIN = 0.15;  // how much more confident the other wrist must be
-const HAND_SWITCH_FRAMES = 8;     // ...for that many consecutive frames before we swap
+const HISTORY_LEN = 6;        // frames averaged to cut down fingertip jitter
 
 // ---- Onboarding timings ----
 const ONBOARD_INTRO_MS = 3500;
@@ -33,8 +20,8 @@ const ONBOARD_DEMO_MS = 4800;   // split evenly across up/down/left/right
 const COUNTDOWN_STEP_MS = 900;  // 3, 2, 1, START!
 
 // ---- Game state ----
-let paddleA = { x: 160, y: 240, history: [], lockedHand: null, switchCounter: 0 }; // left half — Player A
-let paddleB = { x: 480, y: 240, history: [], lockedHand: null, switchCounter: 0 }; // right half — Player B (or AI)
+let paddleA = { x: 160, y: 240, history: [] }; // left half — Player A
+let paddleB = { x: 480, y: 240, history: [] }; // right half — Player B (or AI)
 let puck = { x: 320, y: 240, vx: 4, vy: 3 };
 let particles = [];
 
@@ -51,22 +38,44 @@ let flashTimer = 0;
 let sync = null;
 let roomCode = "";
 let playerName = "Player";
-let playMode = "solo"; // solo => force AI for B; multi => 2-pose when available
+let playMode = "solo"; // solo => AI plays B; multi => the person on the right plays B
 let forceSoloAI = true;
+let playerBLive = false;
+let playerBMiss = 0;
 let uiPhase = "lobby"; // tablet-facing phase
 
 function setup() {
   const canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent("game-root");
   pixelDensity(1);
-  video = createCapture(VIDEO, () => setStatus("Camera ready — loading PoseNet…"));
-  video.size(width, height);
+  setStatus("Starting camera…");
+  let cameraReady = false;
+  video = createCapture(StellaHands.cameraConstraints, () => {
+    cameraReady = true;
+    if (modelLoaded) {
+      setStatus("Hand tracking ready");
+      hideStatusSoon();
+    } else {
+      setStatus("Camera ready — loading hand tracking…");
+    }
+  });
   video.hide();
 
-  poseNet = ml5.poseNet(video, { detectionType: "multiple", maxPoseDetections: 2 }, modelReady);
-  poseNet.on("pose", function (results) {
-    poses = results;
-  });
+  handsTracker = StellaHands.attach(video.elt, { people: true });
+  handsTracker.ready
+    .then(() => {
+      modelLoaded = true;
+      if (cameraReady) {
+        setStatus("Hand tracking ready");
+        hideStatusSoon();
+      } else {
+        setStatus("Hand tracking ready — starting camera…");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      setStatus("Hand tracking failed — check the connection and reload");
+    });
 
   resetPuck();
   // scale default paddle positions after canvas size known
@@ -85,7 +94,6 @@ function setup() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  if (video) video.size(width, height);
 }
 
 function setStatus(text) {
@@ -112,18 +120,18 @@ function initRoomAndSync() {
   const codeEl = document.getElementById("room-code-display");
   if (codeEl) codeEl.textContent = roomCode;
 
+  const existing = PlanetHockeySync.loadState(roomCode);
+  if (existing && existing.playMode) applyPlayMode(existing.playMode);
+
   sync = PlanetHockeySync.createSync(roomCode, "game");
   publishOrbitState();
   sync.on((msg) => {
     if (msg.type === "command") handleCommand(msg.action);
     if (msg.type === "hello" && msg.role === "tablet") publishOrbitState();
-    if (msg.type === "state" && msg.from === "tablet" && msg.state) {
-      if (msg.state.playerName) playerName = msg.state.playerName;
-      if (msg.state.playMode) {
-        playMode = msg.state.playMode;
-        forceSoloAI = playMode !== "multi";
-      }
-      if (msg.state.gameType === "stars" && gameState === "lobby") {
+    if ((msg.type === "state" || msg.type === "joined") && msg.state) {
+      if (msg.from !== "game" && msg.state.playMode) applyPlayMode(msg.state.playMode);
+      if (msg.state.playerName && msg.from !== "game") playerName = msg.state.playerName;
+      if (msg.from === "tablet" && msg.state.gameType === "stars" && gameState === "lobby") {
         const next = new URL(window.location.href);
         next.searchParams.set("mode", "stars");
         next.searchParams.delete("autostart");
@@ -137,6 +145,12 @@ function initRoomAndSync() {
       if (gameState === "lobby") startOrbitMatch();
     }, 700);
   }
+}
+
+function applyPlayMode(mode) {
+  if (mode !== "solo" && mode !== "multi") return;
+  playMode = mode;
+  forceSoloAI = mode !== "multi";
 }
 
 function publishOrbitState() {
@@ -195,6 +209,10 @@ function startOrbitMatch() {
   scoreB = 0;
   timeLeft = MATCH_SECONDS;
   particles = [];
+  paddleA.history = [];
+  paddleB.history = [];
+  playerBLive = false;
+  playerBMiss = 0;
   resetPuck();
   gameState = "intro";
   stateStartTime = millis();
@@ -210,17 +228,10 @@ function updateLobbyUI() {
   if (paused) paused.classList.toggle("visible", gameState === "paused");
 }
 
-function modelReady() {
-  console.log("Model loaded");
-  setStatus("PoseNet ready");
-  hideStatusSoon();
-}
-
 function draw() {
   background(5, 6, 18);
 
-  // Mirrored full-bleed feed — same coordinate space as PoseNet tracking
-  // (updated Orbit sketch fix for big-screen / farther distance).
+  // Mirrored full-bleed feed — same coordinate space as fingertip tracking.
   push();
   translate(width, 0);
   scale(-1, 1);
@@ -232,10 +243,12 @@ function draw() {
   pop();
 
   if (gameState === "lobby") {
-    fill(255, 210, 120, 220);
-    textAlign(LEFT, BOTTOM);
-    textSize(14);
-    text("TEST build · palm / fist tips (no zoom)", 18, height - 18);
+    if (!modelLoaded) {
+      fill(255, 220);
+      textAlign(CENTER, CENTER);
+      textSize(22);
+      text("Warming up camera & hand tracking…", width / 2, height - 48);
+    }
     return;
   }
 
@@ -422,79 +435,6 @@ function drawCountdown() {
 }
 
 // ---- Hand tracking ----
-function videoScale() {
-  // PoseNet points live in the video element's size; rescale into canvas
-  // coords so a full arm reach maps across a big TV after resize/fullscreen.
-  return {
-    x: width / Math.max(1, video.width),
-    y: height / Math.max(1, video.height),
-  };
-}
-
-function mapVideoPoint(vx, vy) {
-  const s = videoScale();
-  return { x: width - vx * s.x, y: vy * s.y };
-}
-
-function getMirroredKeypoint(pose, partName) {
-  let kp = pose.pose.keypoints.find(k => k.part === partName);
-  if (kp && kp.score > CONFIDENCE) {
-    return mapVideoPoint(kp.position.x, kp.position.y);
-  }
-  return null;
-}
-
-function getHandPoint(pose, paddle) {
-  // Locks onto one palm/fist tip per player instead of re-picking every frame.
-  let rw = pose.pose.keypoints.find(k => k.part === 'rightWrist');
-  let lw = pose.pose.keypoints.find(k => k.part === 'leftWrist');
-  let rConf = rw ? rw.score : 0;
-  let lConf = lw ? lw.score : 0;
-
-  if (!paddle.lockedHand) {
-    paddle.lockedHand = rConf >= lConf ? 'right' : 'left';
-  }
-
-  let currentConf = paddle.lockedHand === 'right' ? rConf : lConf;
-  let otherConf = paddle.lockedHand === 'right' ? lConf : rConf;
-
-  if (otherConf > currentConf + HAND_SWITCH_MARGIN) {
-    paddle.switchCounter++;
-    if (paddle.switchCounter > HAND_SWITCH_FRAMES) {
-      paddle.lockedHand = paddle.lockedHand === 'right' ? 'left' : 'right';
-      paddle.switchCounter = 0;
-    }
-  } else {
-    paddle.switchCounter = 0;
-  }
-
-  function palmFistFrom(wristKp, side) {
-    if (!wristKp || wristKp.score <= CONFIDENCE) return null;
-    const w = mapVideoPoint(wristKp.position.x, wristKp.position.y);
-    const elbow = pose.pose.keypoints.find(k => k.part === side + 'Elbow');
-    if (elbow && elbow.score > CONFIDENCE) {
-      const e = mapVideoPoint(elbow.position.x, elbow.position.y);
-      const dx = w.x - e.x;
-      const dy = w.y - e.y;
-      return {
-        x: w.x + dx * FIST_EXTEND,
-        y: w.y + dy * FIST_EXTEND,
-      };
-    }
-    return w;
-  }
-
-  const side = paddle.lockedHand;
-  const kp = side === 'right' ? rw : lw;
-  const primary = palmFistFrom(kp, side);
-  if (primary) return primary;
-
-  // locked hand briefly lost — fall back to the other fist rather than freezing
-  const altSide = side === 'right' ? 'left' : 'right';
-  const altKp = side === 'right' ? lw : rw;
-  return palmFistFrom(altKp, altSide);
-}
-
 function smoothPoint(paddle, rawPoint) {
   paddle.history.push(rawPoint);
   if (paddle.history.length > HISTORY_LEN) paddle.history.shift();
@@ -503,38 +443,39 @@ function smoothPoint(paddle, rawPoint) {
   return { x: avgX, y: avgY };
 }
 
-function updatePaddles() {
-  // Sort by MIRRORED nose x so the sort matches what's actually on screen —
-  // sorting on raw video x would put the physically-right-side player on the
-  // left paddle, since the video itself is drawn mirrored.
-  let sorted = [...poses].sort((p1, p2) => {
-    let n1 = p1.pose.keypoints.find(k => k.part === 'nose');
-    let n2 = p2.pose.keypoints.find(k => k.part === 'nose');
-    let x1 = n1 ? mapVideoPoint(n1.position.x, n1.position.y).x : 0;
-    let x2 = n2 ? mapVideoPoint(n2.position.x, n2.position.y).x : 0;
-    return x1 - x2;
-  });
+function followPaddle(paddle, hand, minX, maxX) {
+  let smoothed = smoothPoint(paddle, hand);
+  paddle.x = lerp(paddle.x, constrain(smoothed.x, minX, maxX), SMOOTHING);
+  paddle.y = lerp(paddle.y, constrain(smoothed.y, PADDLE_R, height - PADDLE_R), SMOOTHING);
+}
 
-  // sorted[0] is now genuinely the person appearing on the LEFT of the mirrored
-  // video, so they always drive paddleA (left half); sorted[1] -> paddleB (right half)
-  if (sorted.length >= 1) {
-    let hand = getHandPoint(sorted[0], paddleA);
-    if (hand) {
-      let smoothed = smoothPoint(paddleA, hand);
-      paddleA.x = lerp(paddleA.x, constrain(smoothed.x, PADDLE_R, width / 2 - PADDLE_R), SMOOTHING);
-      paddleA.y = lerp(paddleA.y, constrain(smoothed.y, PADDLE_R, height - PADDLE_R), SMOOTHING);
-    }
+function updatePaddles() {
+  // People are bodies sorted left-to-right. The person on the left drives
+  // the blue alien; in multiplayer the person on the right drives pink.
+  // One person's second hand does not become player 2.
+  const tips = handsTracker ? handsTracker.update() : [];
+  const people = handsTracker && handsTracker.people ? handsTracker.people : [];
+  let leftTip = people[0] ? people[0].tip : null;
+  let rightTip = people[1] ? people[1].tip : null;
+  if (!people.length) {
+    leftTip = tips[0] || null;
+    rightTip = tips.length > 1 ? tips[tips.length - 1] : null;
+  }
+  livePeople = people.length || (rightTip ? 2 : leftTip ? 1 : 0);
+
+  if (leftTip) {
+    followPaddle(paddleA, leftTip, PADDLE_R, width / 2 - PADDLE_R);
   }
 
-  if (!forceSoloAI && sorted.length >= 2) {
-    let hand = getHandPoint(sorted[1], paddleB);
-    if (hand) {
-      let smoothed = smoothPoint(paddleB, hand);
-      paddleB.x = lerp(paddleB.x, constrain(smoothed.x, width / 2 + PADDLE_R, width - PADDLE_R), SMOOTHING);
-      paddleB.y = lerp(paddleB.y, constrain(smoothed.y, PADDLE_R, height - PADDLE_R), SMOOTHING);
-    }
+  if (!forceSoloAI && rightTip) {
+    playerBMiss = 0;
+    playerBLive = true;
+    followPaddle(paddleB, rightTip, width / 2 + PADDLE_R, width - PADDLE_R);
+  } else if (!forceSoloAI && playerBLive && playerBMiss < 12) {
+    playerBMiss += 1;
   } else {
-    // Solo mode or missing second player — AI drives paddle B
+    playerBLive = false;
+    playerBMiss = 0;
     paddleB.x = lerp(paddleB.x, width - 90, 0.03);
     paddleB.y = lerp(paddleB.y, puck.y, 0.035);
     paddleB.y = constrain(paddleB.y, PADDLE_R, height - PADDLE_R);
@@ -747,11 +688,11 @@ function drawHUD() {
   text("⏱ " + timeStr, 16, 26);
 
   textAlign(RIGHT, CENTER);
-  text(forceSoloAI || poses.length < 2 ? "Player B: AI" : "Player B: live", width - 16, 26);
+  text(forceSoloAI || !playerBLive ? "Player B: AI" : "Player B: live", width - 16, 26);
   textAlign(CENTER, TOP);
   textSize(14);
   fill(255, 200);
-  text("STELLA NOVA · ORBIT RALLY · palm/fist TEST", width / 2, 54);
+  text("STELLA NOVA · ORBIT RALLY", width / 2, 54);
 }
 
 function flash(msg) {

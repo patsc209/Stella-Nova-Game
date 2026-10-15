@@ -31,7 +31,7 @@
       titleEl.textContent = "Star Slash";
       if (noteEl) {
         noteEl.innerHTML =
-          "Tablet selected <strong>Star Slash</strong> (Sun). Slash rising stars with either wrist.<br/>Demo keys: <strong>P</strong> start · <strong>Space</strong> pause · <strong>R</strong> restart";
+          "Tablet selected <strong>Star Slash</strong> (Sun). Slash rising stars with either fingertip.<br/>Demo keys: <strong>P</strong> start · <strong>Space</strong> pause · <strong>R</strong> restart";
       }
       document.title = "Stella Nova — Star Slash";
     } else {

@@ -1,8 +1,8 @@
-/* Stella Nova — TV / webcam PoseNet star-slash game */
+/* Stella Nova — TV / webcam star-slash game.
+   Fingertips come from MediaPipe hands (js/hands.js), not PoseNet. */
 
 let video;
-let poseNet;
-let poses = [];
+let handsTracker = null;
 let modelLoaded = false;
 
 let stars = [];
@@ -23,12 +23,7 @@ let statusEl;
 const TRAIL_MAX_LEN = 14;
 const HIT_RADIUS_PAD = 18;
 const GAME_SECONDS = 30;
-const WRIST_MIN_SCORE = 0.15;
-const WRIST_GOOD_SCORE = 0.32;
 const HAND_SMOOTH = 0.55;
-// Palm/fist test: push the tip past the wrist along the forearm (PoseNet
-// has no palm keypoints — this approximates knuckles / open palm).
-const FIST_EXTEND = 0.55;
 
 let sync = null;
 let roomCode = "";
@@ -41,34 +36,34 @@ function setup() {
   pixelDensity(1);
 
   statusEl = document.getElementById("status");
-  video = createCapture(VIDEO, () => {
-    setStatus("Camera ready — loading PoseNet…");
+  setStatus("Starting camera…");
+  let cameraReady = false;
+  video = createCapture(StellaHands.cameraConstraints, () => {
+    cameraReady = true;
+    if (modelLoaded) {
+      setStatus("Hand tracking ready");
+      hideStatusSoon();
+    } else {
+      setStatus("Camera ready — loading hand tracking…");
+    }
   });
-  // Match video tracking space to the full screen (key far-distance /
-  // big-TV fix from the updated Star Slash sketch). A smaller fixed video
-  // made arm reaches near the edges barely move in tracked coordinates.
-  video.size(width, height);
   video.hide();
 
-  poseNet = ml5.poseNet(
-    video,
-    {
-      detectionType: "single",
-      maxPoseDetections: 1,
-      minConfidence: 0.15,
-      scoreThreshold: 0.2,
-      imageScaleFactor: 0.6,
-      outputStride: 16,
-    },
-    () => {
+  handsTracker = StellaHands.attach(video.elt);
+  handsTracker.ready
+    .then(() => {
       modelLoaded = true;
-      setStatus("PoseNet ready");
-      hideStatusSoon();
-    }
-  );
-  poseNet.on("pose", (results) => {
-    poses = results;
-  });
+      if (cameraReady) {
+        setStatus("Hand tracking ready");
+        hideStatusSoon();
+      } else {
+        setStatus("Hand tracking ready — starting camera…");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      setStatus("Hand tracking failed — check the connection and reload");
+    });
 
   initRoomAndSync();
   lastSpawn = millis();
@@ -77,7 +72,6 @@ function setup() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  if (video) video.size(width, height);
 }
 
 function setStatus(text) {
@@ -213,7 +207,7 @@ function updateLobbyUI() {
 function draw() {
   background(5, 6, 18);
 
-  // Mirrored full-bleed feed — same coordinate space as PoseNet tracking
+  // Mirrored full-bleed feed — same coordinate space as fingertip tracking
   push();
   translate(width, 0);
   scale(-1, 1);
@@ -231,12 +225,7 @@ function draw() {
       fill(255, 220);
       textAlign(CENTER, CENTER);
       textSize(22);
-      text("Warming up camera & PoseNet…", width / 2, height - 48);
-    } else {
-      fill(255, 210, 120, 220);
-      textAlign(LEFT, BOTTOM);
-      textSize(14);
-      text("TEST build · palm / fist tips (no zoom)", 18, height - 18);
+      text("Warming up camera & hand tracking…", width / 2, height - 48);
     }
     return;
   }
@@ -311,102 +300,6 @@ function drawCountdown() {
   textStyle(NORMAL);
 }
 
-function findKeypoint(pose, partName) {
-  return pose.pose.keypoints.find((k) => k.part === partName) || null;
-}
-
-function mapKeypointToCanvas(kp) {
-  // PoseNet points are in video element space; rescale into canvas space so
-  // tracking stays aligned after resizes / fullscreen on any TV size.
-  const scaleX = width / Math.max(1, video.width);
-  const scaleY = height / Math.max(1, video.height);
-  return {
-    x: width - kp.position.x * scaleX,
-    y: kp.position.y * scaleY,
-    score: kp.score,
-  };
-}
-
-function getMirroredKeypoint(pose, partName, minScore = WRIST_MIN_SCORE) {
-  const kp = findKeypoint(pose, partName);
-  if (kp && kp.score > minScore) return mapKeypointToCanvas(kp);
-  return null;
-}
-
-function estimatePalmFist(pose, side) {
-  // Palm/fist tip ≈ wrist extended past itself along elbow → wrist.
-  // Requires a real wrist reading — never use elbow/shoulder alone (chest lock).
-  const wrist = findKeypoint(pose, side + "Wrist");
-  const elbow = findKeypoint(pose, side + "Elbow");
-  if (!wrist || wrist.score < WRIST_MIN_SCORE) return null;
-
-  const w = mapKeypointToCanvas(wrist);
-  if (elbow && elbow.score > 0.18) {
-    const e = mapKeypointToCanvas(elbow);
-    const dx = w.x - e.x;
-    const dy = w.y - e.y;
-    const forearm = Math.hypot(dx, dy);
-    const minForearm = Math.min(width, height) * 0.03;
-    if (forearm < minForearm && wrist.score < WRIST_GOOD_SCORE) {
-      return null;
-    }
-    const extend = wrist.score >= WRIST_GOOD_SCORE ? FIST_EXTEND : FIST_EXTEND * 0.7;
-    return {
-      x: w.x + dx * extend,
-      y: w.y + dy * extend,
-      score: wrist.score,
-    };
-  }
-  return { x: w.x, y: w.y, score: wrist.score };
-}
-
-function bodyCenterX(pose) {
-  const ls = getMirroredKeypoint(pose, "leftShoulder", 0.1);
-  const rs = getMirroredKeypoint(pose, "rightShoulder", 0.1);
-  if (ls && rs) return (ls.x + rs.x) / 2;
-  const nose = getMirroredKeypoint(pose, "nose", 0.1);
-  return nose ? nose.x : width / 2;
-}
-
-function pickBestPose(results) {
-  if (!results || results.length === 0) return null;
-  let best = results[0];
-  let bestScore = best.pose && best.pose.score != null ? best.pose.score : 0;
-  for (let i = 1; i < results.length; i++) {
-    const s = results[i].pose && results[i].pose.score != null ? results[i].pose.score : 0;
-    if (s > bestScore) {
-      best = results[i];
-      bestScore = s;
-    }
-  }
-  return best;
-}
-
-function resolveHands(pose) {
-  let leftPt = estimatePalmFist(pose, "left");
-  let rightPt = estimatePalmFist(pose, "right");
-
-  // At distance PoseNet often swaps left/right labels. Re-assign by screen
-  // side after mirroring so each trail stays on the correct side of the body.
-  if (leftPt && rightPt && leftPt.x > rightPt.x) {
-    const tmp = leftPt;
-    leftPt = rightPt;
-    rightPt = tmp;
-  } else if (leftPt && !rightPt) {
-    if (leftPt.x > bodyCenterX(pose)) {
-      rightPt = leftPt;
-      leftPt = null;
-    }
-  } else if (rightPt && !leftPt) {
-    if (rightPt.x < bodyCenterX(pose)) {
-      leftPt = rightPt;
-      rightPt = null;
-    }
-  }
-
-  return { leftPt, rightPt };
-}
-
 function smoothHand(side, pt) {
   if (!pt) {
     smoothHands[side] = null;
@@ -422,17 +315,18 @@ function smoothHand(side, pt) {
 }
 
 function updateHandTrails() {
-  let leftPt = null;
-  let rightPt = null;
-  const pose = pickBestPose(poses);
-  if (pose) {
-    const hands = resolveHands(pose);
-    leftPt = smoothHand("left", hands.leftPt);
-    rightPt = smoothHand("right", hands.rightPt);
-  } else {
-    smoothHands.left = null;
-    smoothHands.right = null;
+  const tips = handsTracker ? handsTracker.update() : [];
+  let leftRaw = null;
+  let rightRaw = null;
+  if (tips.length >= 2) {
+    leftRaw = tips[0];
+    rightRaw = tips[tips.length - 1];
+  } else if (tips.length === 1) {
+    if (tips[0].x < width / 2) leftRaw = tips[0];
+    else rightRaw = tips[0];
   }
+  let leftPt = smoothHand("left", leftRaw);
+  let rightPt = smoothHand("right", rightRaw);
   if (!leftPt && !rightPt && mouseIsPressed) {
     rightPt = { x: mouseX, y: mouseY };
   }
@@ -459,7 +353,7 @@ function drawSingleTrail(trail, col) {
     if (trail.length === 1) {
       noStroke();
       fill(red(col), green(col), blue(col), 200);
-      // Slightly larger tip = palm / fist target
+      // Fingertip marker
       circle(trail[0].x, trail[0].y, 26);
     }
     return;
