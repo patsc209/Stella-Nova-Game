@@ -92,6 +92,7 @@
       armPreference: null,
       alien: null,
       stars: 0,
+      ownedItems: [],
       streak: 1,
       unlockedPlanets: ["sun"],
       history: [],
@@ -157,6 +158,13 @@
     return updateCurrentUser({ stars, history: history.slice(0, 20) });
   }
 
+  function spendStars(amount) {
+    const user = getCurrentUser();
+    const cost = Math.max(0, Number(amount) || 0);
+    if (!user || (user.stars || 0) < cost) return null;
+    return updateCurrentUser({ stars: (user.stars || 0) - cost });
+  }
+
   /**
    * After a round on `playedWorldId`, unlock the next world if score >= threshold.
    * Returns { unlockedId, unlockedName } or null.
@@ -194,6 +202,7 @@
     getCurrentUser,
     updateCurrentUser,
     addStars,
+    spendStars,
     applyRoundProgress,
     getSession,
     WORLD_ORDER,

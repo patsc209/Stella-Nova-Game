@@ -19,7 +19,7 @@
       game: "Orbit Rally",
       gameType: "orbit",
       blurb: "Air-hockey with your arms — unlocks after the Sun",
-      colour: "#d4a35a",
+      colour: "#c5c9d1",
       playable: true,
       tvPage: "orbit.html",
     },
@@ -29,7 +29,7 @@
       game: "Orbit Rally",
       gameType: "orbit",
       blurb: "Orbit Rally in a brighter arena",
-      colour: "#e8c07a",
+      colour: "#c4894a",
       playable: true,
       tvPage: "orbit.html",
     },
@@ -39,7 +39,7 @@
       game: "Orbit Rally",
       gameType: "orbit",
       blurb: "Home-world Orbit Rally",
-      colour: "#3d8bfd",
+      colour: "#3a74e0",
       playable: true,
       tvPage: "orbit.html",
     },
@@ -49,7 +49,7 @@
       game: "Orbit Rally",
       gameType: "orbit",
       blurb: "Red-planet Orbit Rally",
-      colour: "#e07040",
+      colour: "#e23b32",
       playable: true,
       tvPage: "orbit.html",
     },
@@ -59,7 +59,7 @@
       game: "Orbit Rally",
       gameType: "orbit",
       blurb: "Giant-world Orbit Rally",
-      colour: "#d4a574",
+      colour: "#f07828",
       playable: true,
       tvPage: "orbit.html",
     },
@@ -69,7 +69,7 @@
       game: "Orbit Rally",
       gameType: "orbit",
       blurb: "Ringed Orbit Rally",
-      colour: "#f0d590",
+      colour: "#e08a3a",
       playable: true,
       rings: true,
       tvPage: "orbit.html",
@@ -80,7 +80,7 @@
       game: "Orbit Rally",
       gameType: "orbit",
       blurb: "Cool Orbit Rally",
-      colour: "#7ec8e3",
+      colour: "#5ed6a2",
       playable: true,
       tvPage: "orbit.html",
     },
@@ -90,7 +90,7 @@
       game: "Orbit Rally",
       gameType: "orbit",
       blurb: "Deep-space Orbit Rally finale",
-      colour: "#4169e1",
+      colour: "#3a62d8",
       playable: true,
       tvPage: "orbit.html",
     },
@@ -128,6 +128,15 @@
     colour: ReGradeAlien.COLOURS.map((c) => ({ id: c, label: c, swatch: true })),
   };
 
+  const CATALOG = [
+    { id: "hat-wizard", name: "Hat", slot: "hat", value: "wizard", price: 600, group: "featured", cat: "hat" },
+    { id: "outfit-suit", name: "Outfit", slot: "outfit", value: "suit", price: 1000, group: "featured", cat: "outfit" },
+    { id: "antenna-star", name: "Antenna", slot: "antenna", value: "star", price: 300, group: "daily", cat: "antenna" },
+    { id: "eyes-big", name: "Eyes", slot: "eyes", value: "big", price: 0, group: "daily", cat: "eyes" },
+    { id: "spots-stars", name: "Spots", slot: "spots", value: "stars", price: 400, group: "daily", cat: "spots" },
+    { id: "colour-aurora", name: "Colour", slot: "colour", value: "rainbow", price: 500, group: "daily", cat: "colour" },
+  ];
+
   const Auth = window.StellaNovaAuth || window.ReGradeAuth;
 
   const screens = {};
@@ -142,14 +151,16 @@
 
   let sync = null;
   let room = "";
-  let armPreference = null;
   let alienDraft = ReGradeAlien.mergeAlien(null);
-  let alienCat = "shape";
+  let alienCat = "colour";
+  let shopTab = "customise";
+  let tryingNote = "";
   let selectedPlanetId = "sun";
   let selectedPlayMode = "solo"; // solo | multi
-  let armPain = 3;
   let lastAwardedScore = null;
   let lastUnlockMessage = "";
+  let awaitingStart = false;
+  let howtoPage = 0;
 
   const roomInputs = Array.from(document.querySelectorAll("#room-inputs input"));
 
@@ -161,11 +172,44 @@
     const showNav = mainTabs.includes(name);
     bottomNav.hidden = !showNav;
     shell.classList.toggle("nav-visible", showNav);
+    document.body.classList.toggle("on-home", name === "home");
+    shell.classList.toggle("on-home", name === "home");
+    paintStars();
+    if (name === "settings") renderProfileCard();
     if (showNav) {
       bottomNav.querySelectorAll(".nav-item").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.nav === name);
       });
     }
+  }
+
+  function paintStars(amount) {
+    const chip = document.getElementById("header-stars");
+    const count = document.getElementById("header-star-count");
+    const user = Auth.getCurrentUser();
+    if (chip) chip.hidden = !user;
+    const stars = amount != null ? amount : (user && user.stars) || 0;
+    if (count) count.textContent = String(stars);
+    const profile = document.getElementById("btn-profile");
+    if (profile) profile.hidden = !user;
+    if (user) ReGradeAlien.renderInto(document.getElementById("header-alien"), user.alien, 32);
+  }
+
+  function renderProfileCard() {
+    const user = Auth.getCurrentUser();
+    if (!user) return;
+    const name = document.getElementById("settings-name");
+    if (name) name.textContent = user.name || "Explorer";
+    ReGradeAlien.renderInto(document.getElementById("settings-alien"), user.alien, 72);
+  }
+
+  function ownsItem(user, item) {
+    if (!item || item.price === 0) return true;
+    return ((user && user.ownedItems) || []).includes(item.id);
+  }
+
+  function catalogItem(slot, value) {
+    return CATALOG.find((item) => item.slot === slot && item.value === value) || null;
   }
 
   function setConnected(ok, label) {
@@ -183,6 +227,11 @@
       document.getElementById("welcome-mascot"),
       { shape: "pear", antenna: "double", eyes: "big", spots: "few", colour: "#3ecf8e" },
       150
+    );
+    ReGradeAlien.renderInto(
+      document.getElementById("signup-mascot"),
+      { shape: "round", antenna: "double", eyes: "big", spots: "few", colour: "#7c6cf0" },
+      72
     );
   }
 
@@ -211,46 +260,64 @@
   function renderHome(user) {
     user = user || Auth.getCurrentUser();
     if (!user) return;
-    document.getElementById("home-greeting").textContent = "Hey " + (user.name || "explorer");
-    document.getElementById("star-count").textContent = String(user.stars || 0);
     const unlockedCount = (user.unlockedPlanets || ["sun"]).length;
     const hasProgress = unlockedCount > 1 || (user.stars || 0) > 0;
-    document.getElementById("home-title").textContent = hasProgress
-      ? "Your little universe is growing"
-      : "Your universe is waiting…";
-    document.getElementById("home-caption").textContent = hasProgress
-      ? "Collect " + Auth.UNLOCK_SCORE + "+ stars in a round to unlock the next world."
-      : "Start at the Sun — slash stars, then unlock more worlds.";
-    ReGradeAlien.renderInto(document.getElementById("home-alien"), user.alien, 100);
+    document.getElementById("home-caption").textContent = "Tap the Sun to play.";
+    document.getElementById("home-tip").textContent = hasProgress
+      ? "Score " + Auth.UNLOCK_SCORE + "+ stars in a round to open the next world."
+      : "Locked worlds open after a round earns enough stars.";
     renderSolarStage(user);
   }
 
   function renderSolarStage(user) {
     const stage = document.getElementById("solar-stage");
     const layout = [
-      { id: "sun", x: 12, y: 42, r: 44 },
-      { id: "mercury", x: 30, y: 22, r: 14 },
-      { id: "venus", x: 40, y: 50, r: 18 },
-      { id: "earth", x: 54, y: 28, r: 20 },
-      { id: "mars", x: 66, y: 54, r: 16 },
-      { id: "jupiter", x: 76, y: 24, r: 28 },
-      { id: "saturn", x: 86, y: 56, r: 22 },
-      { id: "uranus", x: 70, y: 12, r: 16 },
-      { id: "neptune", x: 92, y: 18, r: 15 },
+      { id: "sun", x: 9, y: 54, r: 100 },
+      { id: "mercury", x: 26, y: 62, r: 32 },
+      { id: "venus", x: 34, y: 36, r: 52 },
+      { id: "earth", x: 43, y: 66, r: 44 },
+      { id: "mars", x: 51, y: 26, r: 34 },
+      { id: "jupiter", x: 61, y: 38, r: 76 },
+      { id: "saturn", x: 73, y: 68, r: 58 },
+      { id: "uranus", x: 83, y: 32, r: 50 },
+      { id: "neptune", x: 92, y: 58, r: 48 },
     ];
-
+    const order = Auth.WORLD_ORDER || PLANETS.map((p) => p.id);
+    const unlocked = order.filter((id) => isUnlocked(user, id));
+    const nextId = order.find((id) => !isUnlocked(user, id)) || null;
     const celebrateId = sessionStorage.getItem("stella-nova:celebrate-unlock");
+    const linePoints = (pts) => pts.map((p) => p.x + "," + p.y).join(" ");
+    const storyPts = linePoints(layout);
+    const trailPts = linePoints(layout.filter((p) => unlocked.includes(p.id)));
+    const last = layout.find((p) => p.id === unlocked[unlocked.length - 1]) || layout[0];
+    const lock = `<span class="sol-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="#fff"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span>`;
 
-    stage.innerHTML = layout
+    const bodies = layout
       .map((p) => {
         const meta = PLANETS.find((x) => x.id === p.id);
         const open = isUnlocked(user, p.id);
         const rings = meta && meta.rings ? " rings" : "";
         const sunClass = meta && meta.sun ? " sun" : " planet";
         const celebrate = celebrateId === p.id ? " just-unlocked" : "";
-        return `<button class="sol-body${sunClass}${rings}${open ? " unlocked" : " locked"}${celebrate}" type="button" data-planet="${p.id}" style="left:${p.x}%;top:${p.y}%;width:${p.r * 2}px;height:${p.r * 2}px;--p:${meta.colour}" title="${meta.name}"></button>`;
+        const nextClass = !open && p.id === nextId ? " is-next" : "";
+        let label = "";
+        if (meta.sun && open) label = `<span class="sol-label play">Play</span>`;
+        else if (open) label = `<span class="sol-label">${meta.name}</span>`;
+        else if (p.id === nextId) label = `<span class="sol-label next">Next</span>`;
+        return `<div class="sol-spot" style="left:${p.x}%;top:${p.y}%">
+          <button class="sol-body${sunClass}${rings}${open ? " unlocked" : " locked"}${nextClass}${celebrate}" type="button" data-planet="${p.id}" style="width:${p.r * 2}px;height:${p.r * 2}px;--p:${meta.colour}" title="${meta.name}">${open ? "" : lock}${label}</button>
+        </div>`;
       })
       .join("");
+
+    stage.innerHTML =
+      `<svg class="sol-trail" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline class="sol-path" points="${storyPts}"/><polyline class="sol-path-done" points="${trailPts}"/></svg>` +
+      bodies +
+      `<div class="sol-you" style="left:${last.x}%;top:${last.y}%;--lift:${last.r + 6}px">
+        <div class="sol-pin" id="map-alien"></div>
+        <svg class="sol-ship" viewBox="0 0 48 28" aria-hidden="true"><ellipse cx="24" cy="16" rx="16" ry="6" fill="#e7eeff"/><ellipse cx="24" cy="13" rx="7" ry="6" fill="#8fd0ff"/><circle cx="24" cy="13" r="2.5" fill="#1c2340"/></svg>
+      </div>`;
+    ReGradeAlien.renderInto(document.getElementById("map-alien"), user.alien, 34);
 
     stage.querySelectorAll("[data-planet]").forEach((btn) => {
       btn.addEventListener("click", () => openPlanet(btn.dataset.planet));
@@ -260,7 +327,7 @@
       const toast = document.getElementById("unlock-toast");
       const world = PLANETS.find((p) => p.id === celebrateId);
       if (toast && world) {
-        toast.textContent = "Unlocked: " + world.name + " · " + world.game + "!";
+        toast.textContent = "New world: " + world.name + " is on your map.";
         toast.hidden = false;
         toast.classList.add("show");
         setTimeout(() => {
@@ -342,10 +409,9 @@
       locked: false,
       title: "Play " + p.name + "?",
       body:
-        p.blurb +
-        " You’ll pick Solo" +
-        (p.gameType === "orbit" ? " or Play with others" : "") +
-        ", then connect to the TV with one room code.",
+        p.gameType === "stars"
+          ? "Slash rising stars for 30 seconds. Your hands in front of the TV do the slashing."
+          : p.blurb + " Your hands in front of the TV move your alien.",
       primaryLabel: "Play " + p.game,
       secondaryLabel: "Not now",
       onPrimary: () => {
@@ -392,9 +458,7 @@
     const user = Auth.getCurrentUser();
     const world = PLANETS.find((p) => p.id === id);
     document.getElementById("player-name").value = (user && user.name) || "Player";
-    document.getElementById("mode-game-label").textContent = world
-      ? world.game + " on " + world.name + " — pick a mode, then connect to the TV."
-      : "Pick a mode, then connect to the TV.";
+    document.getElementById("mode-game-label").textContent = world ? world.game : "Pick a mode";
 
     const multiCard = document.querySelector(".mode-card.mode-multi");
     const multiBtn = document.getElementById("btn-mode-multi");
@@ -406,19 +470,14 @@
       multiBtn.textContent = soloOnly ? "Multiplayer locked" : "Play with others";
     }
     const modeNote = document.getElementById("mode-lock-note");
-    if (modeNote) {
-      modeNote.hidden = !soloOnly;
-    }
+    if (modeNote) modeNote.hidden = true;
     showScreen("mode");
   }
 
   function goToConnect() {
-    const world = PLANETS.find((p) => p.id === selectedPlanetId);
     const hint = document.getElementById("connect-hint");
     hint.textContent =
-      "Open the TV tab (game.html) — it switches games automatically. Enter its room code. Mode: " +
-      (selectedPlayMode === "multi" ? "Play with others" : "Solo") +
-      (world ? " · " + world.game : "");
+      "The code is on the TV. Your hands in front of that camera play — tapping here does not.";
     showScreen("connect");
   }
 
@@ -521,25 +580,68 @@
   }
 
   function renderAlienCreator() {
-    ReGradeAlien.renderInto(document.getElementById("alien-preview"), alienDraft, 160);
+    const user = Auth.getCurrentUser();
+    ReGradeAlien.renderInto(document.getElementById("alien-preview"), alienDraft, 220);
+    paintStars();
+    const note = document.getElementById("shop-note");
+    if (note) note.textContent = tryingNote;
+
+    document.querySelectorAll("#shop-tabs button").forEach((btn) => {
+      btn.classList.toggle("on", btn.dataset.shop === shopTab);
+    });
+    document.querySelectorAll("#alien-cats .cat").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.cat === alienCat);
+    });
+    const cats = document.getElementById("alien-cats");
+    if (cats) cats.hidden = shopTab === "wardrobe";
+
     const presets = document.getElementById("alien-presets");
+    presets.hidden = shopTab !== "customise";
     presets.innerHTML = PRESETS.map((p, i) => {
-      return `<button class="preset-btn" type="button" data-preset="${i}">${ReGradeAlien.toSvg(p, 44)}</button>`;
+      return `<button class="preset-btn" type="button" data-preset="${i}" aria-label="Alien look ${i + 1}">${ReGradeAlien.toSvg(Object.assign({}, alienDraft, p), 42)}</button>`;
     }).join("");
     presets.querySelectorAll("[data-preset]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        alienDraft = ReGradeAlien.mergeAlien(PRESETS[Number(btn.dataset.preset)]);
+        const look = PRESETS[Number(btn.dataset.preset)];
+        alienDraft = ReGradeAlien.mergeAlien(Object.assign({}, alienDraft, look));
+        tryingNote = "Trying this look. Save to keep the free parts.";
         renderAlienCreator();
       });
     });
 
-    document.querySelectorAll("#alien-cats .cat").forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.cat === alienCat);
-    });
-
     const options = document.getElementById("alien-options");
-    const opts = OPTION_MAP[alienCat] || [];
-    options.innerHTML = opts
+    if (shopTab === "shop") {
+      options.innerHTML = renderShopRails(user);
+    } else if (shopTab === "wardrobe") {
+      options.innerHTML = renderWardrobe(user);
+    } else {
+      options.innerHTML = renderCustomise(user);
+    }
+    options.querySelectorAll("[data-val]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        alienDraft[alienCat] = btn.dataset.val;
+        tryingNote = "";
+        renderAlienCreator();
+      });
+    });
+    options.querySelectorAll("[data-try]").forEach((btn) => {
+      btn.addEventListener("click", () => previewItem(btn.dataset.try));
+    });
+    options.querySelectorAll("[data-buy]").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        buyItem(btn.dataset.buy);
+      });
+    });
+  }
+
+  function renderCustomise(user) {
+    const ownedExtras = CATALOG.filter((item) => item.cat === alienCat && ownsItem(user, item));
+    const free = (OPTION_MAP[alienCat] || []).map((o) => ({ id: o.id, label: o.label, swatch: o.swatch, slot: alienCat }));
+    if (alienCat === "hat" || alienCat === "outfit") {
+      free.unshift({ id: "none", label: "None", slot: alienCat });
+    }
+    const buttons = free
       .map((o) => {
         const active = alienDraft[alienCat] === o.id;
         if (o.swatch) {
@@ -548,12 +650,89 @@
         return `<button class="opt ${active ? "active" : ""}" type="button" data-val="${o.id}">${o.label}</button>`;
       })
       .join("");
-    options.querySelectorAll("[data-val]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        alienDraft[alienCat] = btn.dataset.val;
-        renderAlienCreator();
-      });
+    const extras = ownedExtras
+      .map((item) => {
+        const active = alienDraft[item.slot] === item.value;
+        return `<button class="opt ${active ? "active" : ""}" type="button" data-val="${item.value}">${item.name}</button>`;
+      })
+      .join("");
+    const shopHint =
+      alienCat === "hat" || alienCat === "outfit" || alienCat === "colour"
+        ? `<p class="muted shop-hint">Stars to spend come from playing.</p>`
+        : "";
+    return `<div class="customise-row">${buttons}${extras}</div>${shopHint}`;
+  }
+
+  function gearCard(item, user) {
+    const owned = ownsItem(user, item);
+    const wearing = alienDraft[item.slot] === item.value;
+    const look = Object.assign({}, ReGradeAlien.DEFAULT_ALIEN, { [item.slot]: item.value });
+    const price = item.price === 0 ? "Owned" : "★ " + item.price;
+    const action = wearing && owned ? "Wearing" : wearing ? "Trying" : owned ? "Equip" : "Purchase";
+    return `<article class="gear-card" data-try="${item.id}">
+      <span class="gear-kicker">${item.name}</span>
+      <div class="gear-art">${ReGradeAlien.toSvg(look, 78)}</div>
+      <div class="gear-price">${price}</div>
+      <button class="btn btn-buy" type="button" data-buy="${item.id}" ${wearing && owned ? "disabled" : ""}>${action}</button>
+    </article>`;
+  }
+
+  function renderShopRails(user) {
+    return `<div class="gear-row">${CATALOG.map((item) => gearCard(item, user)).join("")}</div>`;
+  }
+
+  function renderWardrobe(user) {
+    const owned = CATALOG.filter((item) => ownsItem(user, item));
+    if (!owned.length) {
+      return `<p class="muted">Nothing saved yet. Buy a look in the shop, or customise the free parts.</p>`;
+    }
+    return `<div class="gear-row">${owned.map((item) => gearCard(item, user)).join("")}</div>`;
+  }
+
+  function previewItem(id) {
+    const item = CATALOG.find((entry) => entry.id === id);
+    if (!item) return;
+    alienDraft[item.slot] = item.value;
+    tryingNote = "Trying on " + item.name + ". Purchase to keep it.";
+    renderAlienCreator();
+  }
+
+  function buyItem(id) {
+    const user = Auth.getCurrentUser();
+    const item = CATALOG.find((entry) => entry.id === id);
+    if (!user || !item) return;
+    alienDraft[item.slot] = item.value;
+    if (ownsItem(user, item)) {
+      tryingNote = item.name + " equipped.";
+      Auth.updateCurrentUser({ alien: ReGradeAlien.mergeAlien(alienDraft) });
+      renderAlienCreator();
+      return;
+    }
+    if ((user.stars || 0) < item.price) {
+      tryingNote = "You need " + item.price + " stars. Play Star Slash to earn more — you have " + (user.stars || 0) + ".";
+      renderAlienCreator();
+      return;
+    }
+    const next = Auth.spendStars(item.price);
+    if (!next) {
+      tryingNote = "Not enough stars yet.";
+      renderAlienCreator();
+      return;
+    }
+    const ownedItems = (user.ownedItems || []).concat(item.id);
+    Auth.updateCurrentUser({ alien: ReGradeAlien.mergeAlien(alienDraft), ownedItems });
+    tryingNote = "Bought " + item.name + ".";
+    renderAlienCreator();
+  }
+
+  function keptAlien(user) {
+    const clean = ReGradeAlien.mergeAlien(alienDraft);
+    CATALOG.forEach((item) => {
+      if (item.price > 0 && clean[item.slot] === item.value && !ownsItem(user, item)) {
+        clean[item.slot] = ReGradeAlien.DEFAULT_ALIEN[item.slot];
+      }
     });
+    return clean;
   }
 
   function goNextTester() {
@@ -606,28 +785,6 @@
     }
   });
 
-  document.querySelectorAll("#arm-chips .chip").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      document.querySelectorAll("#arm-chips .chip").forEach((c) => c.classList.remove("active"));
-      chip.classList.add("active");
-      armPreference = chip.dataset.arm;
-      const pain = document.getElementById("pain-scale");
-      if (armPreference === "left" || armPreference === "right") {
-        pain.hidden = false;
-      } else {
-        pain.hidden = true;
-      }
-    });
-  });
-
-  const painRange = document.getElementById("pain-range");
-  if (painRange) {
-    painRange.addEventListener("input", () => {
-      armPain = Number(painRange.value);
-      document.getElementById("pain-value").textContent = String(armPain);
-    });
-  }
-
   document.getElementById("btn-profile-continue").addEventListener("click", () => {
     const err = document.getElementById("profile-error");
     err.textContent = "";
@@ -638,8 +795,6 @@
     }
     Auth.updateCurrentUser({
       name,
-      armPreference,
-      armPain: armPreference === "left" || armPreference === "right" ? armPain : null,
       onboardedProfile: true,
     });
     alienDraft = ReGradeAlien.mergeAlien(Auth.getCurrentUser().alien);
@@ -655,9 +810,43 @@
   });
 
   document.getElementById("btn-alien-save").addEventListener("click", () => {
-    Auth.updateCurrentUser({ alien: alienDraft, onboarded: true });
+    const clean = keptAlien(Auth.getCurrentUser());
+    alienDraft = clean;
+    tryingNote = "";
+    Auth.updateCurrentUser({ alien: clean, onboarded: true });
     renderHome();
     showScreen("home");
+  });
+
+  document.querySelectorAll("#shop-tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      shopTab = btn.dataset.shop;
+      tryingNote = "";
+      renderAlienCreator();
+    });
+  });
+
+  document.getElementById("btn-try-on").addEventListener("click", () => {
+    tryingNote = "Preview only. Purchase a paid look to keep it, then save.";
+    const stage = document.querySelector(".alien-pedestal");
+    if (stage) stage.classList.add("trying");
+    renderAlienCreator();
+  });
+
+  function openShop() {
+    const user = Auth.getCurrentUser();
+    if (!user || !user.onboardedProfile) return;
+    alienDraft = ReGradeAlien.mergeAlien(user.alien);
+    shopTab = user.alien ? "shop" : "customise";
+    tryingNote = "";
+    renderAlienCreator();
+    showScreen("alien");
+  }
+
+  document.getElementById("header-stars").addEventListener("click", openShop);
+  document.getElementById("btn-profile").addEventListener("click", () => {
+    if (!Auth.getCurrentUser()) return;
+    showScreen("settings");
   });
 
   bottomNav.querySelectorAll(".nav-item").forEach((btn) => {
@@ -760,8 +949,54 @@
     });
   }
 
+  function currentGameType() {
+    const world = PLANETS.find((p) => p.id === selectedPlanetId);
+    return world && world.gameType === "orbit" ? "orbit" : "stars";
+  }
+
+  function renderHowTo() {
+    const orbit = currentGameType() === "orbit";
+    const world = PLANETS.find((p) => p.id === selectedPlanetId);
+    document.getElementById("howto-title").textContent = world ? world.game : orbit ? "Orbit Rally" : "Star Slash";
+    document.getElementById("howto-stars").hidden = orbit;
+    document.getElementById("howto-orbit").hidden = !orbit;
+    document.querySelectorAll("#howto-orbit .howto-page").forEach((el, index) => {
+      el.hidden = !orbit || index !== howtoPage;
+    });
+    const dots = document.getElementById("howto-dots");
+    dots.hidden = !orbit;
+    dots.querySelectorAll("button").forEach((dot, index) => {
+      dot.classList.toggle("on", index === howtoPage);
+    });
+    const note = document.getElementById("howto-orbit-note");
+    if (note) {
+      note.textContent = selectedPlayMode === "multi"
+        ? "You are the blue alien on the left. The person on the right controls the pink alien."
+        : "You are the blue alien on the left. The pink alien is the computer.";
+    }
+    const last = !orbit || howtoPage >= 1;
+    document.getElementById("btn-howto-next").textContent = last
+      ? orbit ? "Tap to start" : "Tap to begin"
+      : "Next";
+  }
+
+  function showHowTo() {
+    awaitingStart = true;
+    howtoPage = 0;
+    renderHowTo();
+    showScreen("howto");
+  }
+
   function applyState(state) {
     if (!state) return;
+    if (awaitingStart) {
+      if (!state.phase || state.phase === "lobby") {
+        setConnected(!!state.hostReady, state.hostReady ? "TV ready · " + room : "Waiting for TV…");
+      } else {
+        setConnected(true, "TV ready · " + room);
+      }
+      return;
+    }
     const world = PLANETS.find((p) => p.id === selectedPlanetId);
     const isOrbit = (state.gameType || (world && world.gameType)) === "orbit";
     const score = typeof state.score === "number" ? state.score : 0;
@@ -808,20 +1043,22 @@
           : "You collected " + score + " stars" + (world ? " on " + world.name : "") + "!";
 
         const unlockEl = document.getElementById("results-unlock");
+        const homeBtn = document.getElementById("btn-results-home");
         if (progress && progress.unlockedId) {
           const next = PLANETS.find((p) => p.id === progress.unlockedId);
-          lastUnlockMessage = next
-            ? "New world unlocked: " + next.name + " (" + next.game + ")!"
-            : "";
+          lastUnlockMessage = next ? "New world unlocked: " + next.name : "";
           unlockEl.textContent = lastUnlockMessage;
           unlockEl.hidden = false;
+          if (homeBtn && next) homeBtn.textContent = "Fly to " + next.name;
           sessionStorage.setItem("stella-nova:celebrate-unlock", progress.unlockedId);
         } else if (starsEarned < Auth.UNLOCK_SCORE) {
           unlockEl.textContent =
-            "Score ✦ " + Auth.UNLOCK_SCORE + "+ in one round to unlock the next world.";
+            "Score ★ " + Auth.UNLOCK_SCORE + "+ in one round to unlock the next world.";
           unlockEl.hidden = false;
+          if (homeBtn) homeBtn.textContent = "Back to your universe";
         } else {
           unlockEl.hidden = true;
+          if (homeBtn) homeBtn.textContent = "Back to your universe";
         }
         document.getElementById("results-meta").textContent =
           "Need ✦ " + Auth.UNLOCK_SCORE + "+ in a round to unlock the next planet.";
@@ -871,6 +1108,17 @@
       if (msg.type === "state" && msg.state) applyState(msg.state);
       if (msg.type === "hello" && msg.role === "game") setConnected(true, "TV ready · " + room);
     });
+    showHowTo();
+    applyState(sync.getState());
+  }
+
+  function beginPlay() {
+    if (!sync) {
+      showScreen("connect");
+      document.getElementById("connect-error").textContent = "Connect to the TV again, then start.";
+      return;
+    }
+    awaitingStart = false;
     sync.send({ type: "command", action: "play" });
     // Resend play a couple times in case the TV is mid-switch between games
     setTimeout(() => sync && sync.send({ type: "command", action: "play" }), 900);
@@ -886,6 +1134,29 @@
   }
 
   document.getElementById("btn-connect").addEventListener("click", connectAndPlay);
+  document.getElementById("btn-howto-back").addEventListener("click", () => {
+    if (currentGameType() === "orbit" && howtoPage > 0) {
+      howtoPage -= 1;
+      renderHowTo();
+      return;
+    }
+    awaitingStart = false;
+    showScreen("connect");
+  });
+  document.getElementById("btn-howto-next").addEventListener("click", () => {
+    if (currentGameType() === "orbit" && howtoPage < 1) {
+      howtoPage += 1;
+      renderHowTo();
+      return;
+    }
+    beginPlay();
+  });
+  document.getElementById("howto-dots").addEventListener("click", (event) => {
+    const dot = event.target.closest("button");
+    if (!dot) return;
+    howtoPage = Number(dot.dataset.dot) || 0;
+    renderHowTo();
+  });
   document.getElementById("btn-pause").addEventListener("click", () => {
     sendCommand("pause");
     showScreen("paused");

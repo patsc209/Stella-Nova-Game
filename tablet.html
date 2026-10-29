@@ -17,17 +17,23 @@
     <div class="tablet-shell has-nav" id="tablet-shell">
       <header class="tablet-top" id="app-topbar">
         <div class="tablet-brand">Stella Nova <span class="star-mark">✦</span></div>
-        <div class="pill">
-          <span class="conn-dot" id="conn-dot"></span>
-          <span id="conn-label">Not connected</span>
+        <div class="tablet-tools">
+          <button class="profile-chip" id="btn-profile" type="button" hidden aria-label="Your profile">
+            <span id="header-alien"></span>
+          </button>
+          <button class="star-chip header-stars" id="header-stars" type="button" hidden>★ <span id="header-star-count">0</span></button>
+          <div class="pill">
+            <span class="conn-dot" id="conn-dot"></span>
+            <span id="conn-label">Not connected</span>
+          </div>
         </div>
       </header>
 
       <!-- WELCOME -->
       <section class="screen active" id="screen-welcome" data-screen="welcome">
-        <div class="welcome-hero">
+        <div class="welcome-hero welcome-space">
           <p class="brand-lg">Stella Nova <span class="star-mark">✦</span></p>
-          <p class="tag-soft">Play · Explore · Your Universe</p>
+          <p class="tag-soft">This tablet picks the world. The TV camera follows your hands.</p>
           <div class="mascot-wrap" id="welcome-mascot"></div>
           <div class="stack welcome-actions">
             <button class="btn btn-regrade btn-block" id="btn-goto-login" type="button">Log in</button>
@@ -58,8 +64,9 @@
       <section class="screen" id="screen-signup" data-screen="signup">
         <div class="panel soft">
           <button class="text-back" id="btn-signup-back" type="button">← Back</button>
+          <div class="peek-mascot" id="signup-mascot"></div>
           <h1>Create account</h1>
-          <p>Start your little universe.</p>
+          <p>This tablet picks the world. The TV camera follows your hands.</p>
           <label class="field-label" for="signup-id">Email or phone number</label>
           <input class="name-input" id="signup-id" autocomplete="username" placeholder="you@email.com" />
           <label class="field-label" for="signup-pass">Password</label>
@@ -76,75 +83,56 @@
       <section class="screen" id="screen-profile" data-screen="profile">
         <div class="panel soft">
           <h1>Make it yours</h1>
-          <p>Quick profile before your alien arrives.</p>
+          <p>A name is enough.</p>
           <div class="avatar-placeholder" id="profile-avatar-preview"></div>
           <label class="field-label" for="profile-name">What should we call you?</label>
           <input class="name-input" id="profile-name" maxlength="16" placeholder="Izzy" />
-          <p class="field-label">Which arm feels easier today? (optional)</p>
-          <div class="chip-row" id="arm-chips">
-            <button class="chip" type="button" data-arm="left">Left</button>
-            <button class="chip" type="button" data-arm="right">Right</button>
-            <button class="chip" type="button" data-arm="skip">Prefer not to say</button>
-          </div>
-          <div class="pain-scale" id="pain-scale" hidden>
-            <label class="field-label" for="pain-range">How sore does that arm feel today? (1 = fine · 5 = very sore)</label>
-            <div class="pain-row">
-              <span>1</span>
-              <input type="range" id="pain-range" min="1" max="5" step="1" value="3" />
-              <span>5</span>
-              <strong class="pain-value" id="pain-value">3</strong>
-            </div>
-          </div>
           <button class="btn btn-regrade btn-block" id="btn-profile-continue" type="button">Save &amp; continue</button>
           <p class="form-error" id="profile-error"></p>
         </div>
       </section>
 
-      <!-- ALIEN CREATOR -->
+      <!-- ALIEN + SHOP -->
       <section class="screen" id="screen-alien" data-screen="alien">
-        <div class="alien-creator">
-          <div class="alien-creator-top">
-            <h1>Create your alien</h1>
-            <p>This buddy lives on your home screen.</p>
+        <div class="shop-screen">
+          <div class="shop-switch" id="shop-tabs">
+            <button type="button" data-shop="customise" class="on">Customise</button>
+            <button type="button" data-shop="shop">Shop</button>
+            <button type="button" data-shop="wardrobe">Wardrobe</button>
           </div>
-          <div class="alien-layout">
-            <div class="alien-cats" id="alien-cats">
-              <button class="cat active" type="button" data-cat="shape">Shape</button>
-              <button class="cat" type="button" data-cat="antenna">Antenna</button>
-              <button class="cat" type="button" data-cat="eyes">Eyes</button>
-              <button class="cat" type="button" data-cat="spots">Spots</button>
-              <button class="cat" type="button" data-cat="colour">Colour</button>
-            </div>
-            <div class="alien-preview-wrap">
-              <div class="alien-preview" id="alien-preview"></div>
-            </div>
-            <div class="alien-presets" id="alien-presets"></div>
+          <div class="shop-cats" id="alien-cats">
+            <button class="cat active" type="button" data-cat="colour">Colour</button>
+            <button class="cat" type="button" data-cat="antenna">Antenna</button>
+            <button class="cat" type="button" data-cat="eyes">Eyes</button>
+            <button class="cat" type="button" data-cat="spots">Spots</button>
+            <button class="cat" type="button" data-cat="hat">Hats</button>
+            <button class="cat" type="button" data-cat="outfit">Outfit</button>
           </div>
-          <div class="alien-options" id="alien-options"></div>
-          <button class="btn btn-regrade btn-block" id="btn-alien-save" type="button">Save</button>
+          <div class="shop-layout">
+            <div class="shop-stage">
+              <div class="alien-pedestal">
+                <div class="alien-preview" id="alien-preview"></div>
+              </div>
+              <button class="try-on" id="btn-try-on" type="button">Try on</button>
+            </div>
+            <div class="shop-main">
+              <p class="shop-note" id="shop-note"></p>
+              <div class="alien-options" id="alien-options"></div>
+            </div>
+          </div>
+          <div class="alien-presets" id="alien-presets"></div>
+          <button class="btn btn-regrade btn-block" id="btn-alien-save" type="button">Save &amp; continue</button>
         </div>
       </section>
 
       <!-- HOME / SOLAR SYSTEM -->
       <section class="screen" id="screen-home" data-screen="home">
-        <div class="universe-home">
-          <div class="universe-top">
-            <div>
-              <p class="eyebrow" id="home-greeting">Hey explorer</p>
-              <h1 id="home-title">Your universe is waiting…</h1>
-            </div>
-            <div class="star-chip" id="star-chip">✦ <span id="star-count">0</span></div>
-          </div>
-          <div class="solar-stage" id="solar-stage"></div>
-          <div class="home-side">
-            <div class="home-alien" id="home-alien"></div>
-            <p class="home-caption" id="home-caption">Collect stars and explore new worlds.</p>
-            <button class="btn btn-regrade btn-block" id="btn-explore" type="button">Explore</button>
-          </div>
-          <div class="home-tip-wrap">
-            <p class="home-tip" id="home-tip">Grey worlds are locked — tap one to see how to unlock it. Score ✦ 12+ in a round to open the next planet.</p>
-            <div class="unlock-toast" id="unlock-toast" hidden></div>
-          </div>
+        <div class="solar-stage space-map" id="solar-stage"></div>
+        <div class="map-overlay">
+          <p class="home-caption" id="home-caption">Tap the Sun to play.</p>
+          <p class="home-tip" id="home-tip">Locked worlds open after a round earns enough stars.</p>
+          <button class="btn btn-ghost map-explore" id="btn-explore" type="button">See all worlds</button>
+          <div class="unlock-toast" id="unlock-toast" hidden></div>
         </div>
       </section>
 
@@ -192,7 +180,13 @@
       <!-- SETTINGS -->
       <section class="screen" id="screen-settings" data-screen="settings">
         <div class="panel soft">
-          <h1>Settings</h1>
+          <div class="profile-card">
+            <div class="profile-card-alien" id="settings-alien"></div>
+            <div>
+              <h1 id="settings-name">Your profile</h1>
+              <p class="muted">Your alien and this tablet.</p>
+            </div>
+          </div>
           <div class="settings-list">
             <button class="settings-row" id="btn-edit-alien" type="button"><span>Alien design</span><span>›</span></button>
             <button class="settings-row" id="btn-edit-profile" type="button"><span>Account</span><span>›</span></button>
@@ -210,13 +204,13 @@
         <div class="panel soft mode-panel">
           <button class="text-back" id="btn-mode-back" type="button">← Back</button>
           <h1>How do you want to play?</h1>
-          <p id="mode-game-label">Pick a mode, then connect to the TV.</p>
-          <p class="mode-lock-note" id="mode-lock-note" hidden>
-            Star Slash on the Sun is solo only — multiplayer unlocks with Orbit Rally on later worlds.
-          </p>
+          <p id="mode-game-label">Pick a mode.</p>
+          <p class="mode-lock-note" id="mode-lock-note" hidden></p>
           <div class="mode-grid">
             <article class="mode-card mode-solo">
-              <div class="mode-card-top solo"></div>
+              <div class="mode-art" aria-hidden="true">
+                <svg viewBox="0 0 120 80"><circle cx="46" cy="36" r="16" fill="#3ecf8e"/><circle cx="40" cy="34" r="3" fill="#16324f"/><circle cx="52" cy="34" r="3" fill="#16324f"/><path d="M40 42 Q46 46 52 42" stroke="#16324f" stroke-width="2" fill="none"/><polygon points="86,28 89,36 98,36 91,41 93,50 86,45 79,50 81,41 74,36 83,36" fill="#f5c542"/></svg>
+              </div>
               <div class="mode-card-body">
                 <h3>Solo</h3>
                 <p>Play at your own pace.</p>
@@ -224,7 +218,9 @@
               </div>
             </article>
             <article class="mode-card mode-multi">
-              <div class="mode-card-top multi"></div>
+              <div class="mode-art" aria-hidden="true">
+                <svg viewBox="0 0 120 80"><circle cx="34" cy="36" r="14" fill="#7ec8ff"/><circle cx="86" cy="36" r="14" fill="#ff8ad4"/><circle cx="30" cy="34" r="2.5" fill="#16324f"/><circle cx="38" cy="34" r="2.5" fill="#16324f"/><circle cx="82" cy="34" r="2.5" fill="#4a1840"/><circle cx="90" cy="34" r="2.5" fill="#4a1840"/></svg>
+              </div>
               <div class="mode-card-body">
                 <h3>Play with others</h3>
                 <p>Challenge other players.</p>
@@ -240,9 +236,21 @@
         <div class="panel soft">
           <button class="text-back" id="btn-connect-back" type="button">← Back</button>
           <h1>Connect to your screen</h1>
-          <p id="connect-hint">Open the TV / Game tab and type its 4-character room code.</p>
-          <label class="field-label" for="player-name">Your name</label>
-          <input class="name-input" id="player-name" maxlength="16" placeholder="Izzy" autocomplete="nickname" />
+          <div class="pair-art" aria-hidden="true">
+            <svg viewBox="0 0 280 90">
+              <rect x="8" y="18" width="70" height="54" rx="8" fill="#fff" stroke="#3c3489" stroke-width="3"/>
+              <rect x="18" y="28" width="50" height="28" rx="4" fill="#f4f0e6"/>
+              <circle cx="43" cy="64" r="3" fill="#3c3489"/>
+              <path d="M92 46 H150" stroke="#3c3489" stroke-width="3" stroke-dasharray="6 6" stroke-linecap="round"/>
+              <path d="M142 38 L156 46 L142 54" fill="none" stroke="#3c3489" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="168" y="12" width="100" height="66" rx="8" fill="#1c1a17"/>
+              <circle cx="200" cy="40" r="8" fill="#e2b340"/>
+              <circle cx="230" cy="48" r="6" fill="#7ec8ff"/>
+              <text x="43" y="86" text-anchor="middle" font-size="11" fill="#1c1a17" font-family="Avenir Next, sans-serif">iPad</text>
+              <text x="218" y="86" text-anchor="middle" font-size="11" fill="#1c1a17" font-family="Avenir Next, sans-serif">TV</text>
+            </svg>
+          </div>
+          <p id="connect-hint">The code is on the TV. Your hands in front of that camera play — tapping here does not.</p>
           <label class="field-label">Room code</label>
           <div class="room-inputs" id="room-inputs">
             <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 1" />
@@ -250,16 +258,173 @@
             <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 3" />
             <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 4" />
           </div>
+          <label class="field-label" for="player-name">Your name</label>
+          <input class="name-input" id="player-name" maxlength="16" placeholder="Izzy" autocomplete="nickname" />
           <div class="stack">
-            <button class="btn btn-accent btn-block" id="btn-connect" type="button">Join &amp; start</button>
+            <button class="btn btn-regrade btn-block" id="btn-connect" type="button">Join &amp; start</button>
           </div>
           <p class="form-error" id="connect-error"></p>
         </div>
       </section>
 
+      <!-- HOW TO PLAY — shown after the room code, before the TV round starts -->
+      <section class="screen" id="screen-howto" data-screen="howto">
+        <div class="panel howto-panel">
+          <button class="text-back howto-back" id="btn-howto-back" type="button">← Back</button>
+          <p class="howto-kicker">How to play</p>
+          <h1 id="howto-title">Star Slash</h1>
+
+          <div id="howto-stars">
+            <div class="howto-grid">
+              <article class="howto-card">
+                <div class="howto-art" aria-hidden="true">
+                  <svg class="slash-demo" viewBox="0 0 680 460">
+                    <defs>
+                      <path id="star" d="M0,-12 L3.5,-4.8 L11.4,-3.7 L5.7,1.9 L7,9.7 L0,6 L-7,9.7 L-5.7,1.9 L-11.4,-3.7 L-3.5,-4.8 Z"/>
+                    </defs>
+                    <rect x="20" y="20" width="640" height="420" rx="16" fill="#FFFFFF"/>
+                    <rect x="240" y="350" width="260" height="85" rx="18" fill="#F2F2F2"/>
+                    <rect x="60" y="50" width="560" height="290" rx="22" fill="#545454"/>
+                    <g transform="translate(215,80)"><g class="tw" style="animation-delay:0s"><use href="#star" transform="scale(2)" fill="#9FE3F2"/></g></g>
+                    <g transform="translate(455,82)"><g class="tw" style="animation-delay:0.8s"><use href="#star" transform="scale(2)" fill="#E680E6"/></g></g>
+                    <g transform="translate(92,120)"><g class="tw" style="animation-delay:1.6s"><use href="#star" transform="scale(1.8)" fill="#E680E6"/></g></g>
+                    <g transform="translate(592,150)"><g class="tw" style="animation-delay:2.2s"><use href="#star" transform="scale(1.8)" fill="#F0E8A0"/></g></g>
+                    <g class="armL">
+                      <rect x="110" y="185" width="190" height="30" fill="#BBBBBB"/>
+                      <circle cx="120" cy="200" r="16" fill="#FFFFFF" opacity="0.28"/>
+                    </g>
+                    <g class="armR">
+                      <rect x="380" y="185" width="190" height="30" fill="#BBBBBB"/>
+                      <circle cx="560" cy="200" r="16" fill="#FFFFFF" opacity="0.28"/>
+                    </g>
+                    <rect x="300" y="170" width="80" height="170" fill="#BBBBBB"/>
+                    <circle cx="340" cy="132" r="32" fill="#BBBBBB"/>
+                    <g transform="translate(144,91)"><g class="st" style="animation-delay:0s"><use href="#star" transform="scale(2.1)" fill="#F0E8A0"/></g><circle class="ring" r="14" style="animation-delay:0s"/></g>
+                    <g transform="translate(114,238)"><g class="st" style="animation-delay:0.52s"><use href="#star" transform="scale(2.1)" fill="#E680E6"/></g><circle class="ring" r="14" style="animation-delay:0.52s"/></g>
+                    <g transform="translate(536,91)"><g class="st" style="animation-delay:2s"><use href="#star" transform="scale(2.1)" fill="#9FE3F2"/></g><circle class="ring" r="14" style="animation-delay:2s"/></g>
+                    <g transform="translate(566,240)"><g class="st" style="animation-delay:2.52s"><use href="#star" transform="scale(2.1)" fill="#F0E8A0"/></g><circle class="ring" r="14" style="animation-delay:2.52s"/></g>
+                    <path class="tr t1" pathLength="100" d="M110,200 A190,190 0 0 1 144,91"/>
+                    <path class="tr t2" pathLength="100" d="M144,91 A190,190 0 0 0 114,239"/>
+                    <path class="tr t3" pathLength="100" d="M570,200 A190,190 0 0 0 536,91"/>
+                    <path class="tr t4" pathLength="100" d="M536,91 A190,190 0 0 1 566,240"/>
+                    <g class="pL">
+                      <rect x="100" y="292" width="112" height="30" fill="#F4B8B8"/>
+                      <path class="fx" d="M96,288 Q82,307 96,326"/>
+                      <path class="fx" d="M82,284 Q66,307 82,330"/>
+                    </g>
+                    <g class="pR">
+                      <rect x="288" y="292" width="112" height="30" fill="#F4B8B8"/>
+                      <path class="fx" d="M404,288 Q418,307 404,326"/>
+                      <path class="fx" d="M418,284 Q434,307 418,330"/>
+                    </g>
+                    <rect x="212" y="285" width="76" height="100" fill="#F4B8B8"/>
+                    <rect x="212" y="385" width="30" height="50" fill="#F4B8B8"/>
+                    <rect x="258" y="385" width="30" height="50" fill="#F4B8B8"/>
+                    <circle cx="250" cy="252" r="30" fill="#F4B8B8"/>
+                  </svg>
+                </div>
+                <p>Use your hands to slash the stars</p>
+              </article>
+              <article class="howto-card">
+                <div class="howto-art" aria-hidden="true">
+                  <svg viewBox="0 0 200 130" width="180" height="118">
+                    <rect x="18" y="16" width="164" height="98" rx="16" fill="#1b2438"/>
+                    <polygon points="48,36 51,44 60,44 53,49 55,57 48,52 41,57 43,49 36,44 45,44" fill="#f5b942"/>
+                    <polygon points="78,28 80,34 87,34 81,38 83,44 78,40 73,44 75,38 69,34 76,34" fill="#f5b942"/>
+                    <polygon points="108,40 110,46 116,46 111,50 113,56 108,52 103,56 105,50 100,46 106,46" fill="#f0a202"/>
+                    <circle cx="142" cy="70" r="28" fill="#f7f1e3" stroke="#243056" stroke-width="4"/>
+                    <circle cx="142" cy="70" r="3" fill="#243056"/>
+                    <path d="M142 70 L142 52" stroke="#243056" stroke-width="3" stroke-linecap="round"/>
+                    <path d="M142 70 L156 78" stroke="#e76f51" stroke-width="3" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <p>Get the most stars before the time is up</p>
+              </article>
+            </div>
+          </div>
+
+          <div id="howto-orbit" hidden>
+            <div class="howto-page" data-page="0">
+              <div class="howto-grid">
+                <article class="howto-card">
+                  <div class="howto-art" aria-hidden="true">
+                    <svg viewBox="0 0 200 130" width="180" height="118">
+                      <circle cx="62" cy="48" r="22" fill="#7ec8ff"/>
+                      <circle cx="54" cy="46" r="4" fill="#16324f"/>
+                      <circle cx="70" cy="46" r="4" fill="#16324f"/>
+                      <path d="M54 56 Q62 62 70 56" stroke="#16324f" stroke-width="2" fill="none"/>
+                      <path d="M40 70 L24 96" stroke="#5b8cff" stroke-width="7" stroke-linecap="round"/>
+                      <path d="M84 70 L100 96" stroke="#5b8cff" stroke-width="7" stroke-linecap="round"/>
+                      <circle cx="138" cy="48" r="22" fill="#ff8ad4"/>
+                      <circle cx="130" cy="46" r="4" fill="#4a1840"/>
+                      <circle cx="146" cy="46" r="4" fill="#4a1840"/>
+                      <path d="M130 56 Q138 62 146 56" stroke="#4a1840" stroke-width="2" fill="none"/>
+                      <path d="M116 70 L100 96" stroke="#e060a0" stroke-width="7" stroke-linecap="round"/>
+                      <path d="M160 70 L176 96" stroke="#e060a0" stroke-width="7" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <p>Use your hands to move your alien</p>
+                </article>
+                <article class="howto-card">
+                  <div class="howto-art" aria-hidden="true">
+                    <svg viewBox="0 0 200 130" width="180" height="118">
+                      <circle cx="48" cy="64" r="26" fill="#7ec8ff"/>
+                      <circle cx="40" cy="62" r="4" fill="#16324f"/>
+                      <circle cx="56" cy="62" r="4" fill="#16324f"/>
+                      <polygon points="150,64 156,78 172,78 160,88 164,104 150,94 136,104 140,88 128,78 144,78" fill="#f5b942"/>
+                      <path d="M78 64 H124" stroke="#f5b942" stroke-width="4" stroke-dasharray="6 6" stroke-linecap="round"/>
+                      <path d="M116 56 L128 64 L116 72" fill="none" stroke="#f5b942" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                  <p>Hit the ball onto your opponent’s side</p>
+                </article>
+              </div>
+              <p class="howto-note" id="howto-orbit-note"></p>
+            </div>
+            <div class="howto-page" data-page="1" hidden>
+              <div class="howto-grid">
+                <article class="howto-card">
+                  <div class="howto-art" aria-hidden="true">
+                    <svg viewBox="0 0 200 130" width="180" height="118">
+                      <rect x="128" y="22" width="16" height="86" rx="8" fill="#7ec8ff"/>
+                      <polygon points="70,64 76,76 90,76 79,85 83,98 70,90 57,98 61,85 50,76 64,76" fill="#f5b942"/>
+                      <path d="M96 64 H118" stroke="#f5b942" stroke-width="4" stroke-linecap="round"/>
+                      <path d="M110 56 L122 64 L110 72" fill="none" stroke="#f5b942" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                      <rect x="108" y="18" width="52" height="22" rx="11" fill="#ff8a65"/>
+                      <text x="134" y="34" text-anchor="middle" font-size="12" font-family="Sora, sans-serif" font-weight="700" fill="#fff">+1</text>
+                    </svg>
+                  </div>
+                  <p>Score when the ball leaves your opponent’s side</p>
+                </article>
+                <article class="howto-card">
+                  <div class="howto-art" aria-hidden="true">
+                    <svg viewBox="0 0 200 130" width="180" height="118">
+                      <rect x="18" y="16" width="164" height="98" rx="16" fill="#1b2438"/>
+                      <polygon points="46,40 49,48 58,48 51,53 53,61 46,56 39,61 41,53 34,48 43,48" fill="#f5b942"/>
+                      <polygon points="78,32 80,38 87,38 81,42 83,48 78,44 73,48 75,42 69,38 76,38" fill="#f5b942"/>
+                      <circle cx="140" cy="70" r="28" fill="#f7f1e3" stroke="#243056" stroke-width="4"/>
+                      <circle cx="140" cy="70" r="3" fill="#243056"/>
+                      <path d="M140 70 L140 52" stroke="#243056" stroke-width="3" stroke-linecap="round"/>
+                      <path d="M140 70 L154 78" stroke="#e76f51" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <p>Most points when the timer ends wins</p>
+                </article>
+              </div>
+            </div>
+          </div>
+
+          <div class="howto-dots" id="howto-dots" hidden>
+            <button type="button" data-dot="0" aria-label="Instructions page 1"></button>
+            <button type="button" data-dot="1" aria-label="Instructions page 2"></button>
+          </div>
+          <button class="btn btn-accent btn-block" id="btn-howto-next" type="button">Tap to begin</button>
+        </div>
+      </section>
+
       <!-- LIVE -->
       <section class="screen" id="screen-live" data-screen="live">
-        <div class="live-card">
+        <div class="live-card live-sky">
           <div class="orbit" aria-hidden="true"></div>
           <h1 id="live-title">You’re playing on TV. Look up and slash stars!</h1>
           <div class="score-live" id="live-score">0</div>
@@ -279,7 +444,7 @@
 
       <!-- RESULTS -->
       <section class="screen" id="screen-results" data-screen="results">
-        <div class="panel soft" style="flex: 1">
+        <div class="panel soft results-sky" style="flex: 1">
           <h1>Nice work!</h1>
           <p id="results-blurb">You collected stars!</p>
           <div class="results-score" id="results-score">0</div>
@@ -287,7 +452,7 @@
           <p class="unlock-banner" id="results-unlock" hidden></p>
           <div class="stack">
             <button class="btn btn-accent btn-block" id="btn-play-again" type="button">Play again</button>
-            <button class="btn btn-regrade btn-block" id="btn-results-home" type="button">Continue (same tester)</button>
+            <button class="btn btn-regrade btn-block" id="btn-results-home" type="button">Back to your universe</button>
             <button class="btn btn-ghost btn-block" id="btn-results-next-tester" type="button">Reset for next tester</button>
           </div>
         </div>
