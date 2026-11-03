@@ -77,7 +77,7 @@
   sync.publish({
     phase: "lobby",
     score: 0,
-    timeLeft: 30,
+    timeLeft: 20,
     hostReady: true,
     gameType: null,
     playMode: null,
@@ -99,14 +99,16 @@
     if (msg.type === "hello" && msg.role === "tablet") {
       sync.publish({ hostReady: true, phase: "lobby" });
     }
-    if (msg.type === "state" && msg.state) {
+    if (msg.type === "state" && msg.from === "tablet" && msg.state) {
       if (msg.state.gameType === "stars" || msg.state.gameType === "orbit") {
         pendingGameType = msg.state.gameType;
       }
     }
     if (msg.type === "command" && msg.action === "play") {
       const state = sync.getState() || {};
-      maybeSwitch(pendingGameType || state.gameType || "stars", true);
+      const gt = pendingGameType || state.gameType;
+      if (gt !== "stars" && gt !== "orbit") return;
+      maybeSwitch(gt, true);
     }
   });
 })();

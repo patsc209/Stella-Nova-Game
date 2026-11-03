@@ -7,7 +7,7 @@ let modelLoaded = false;
 let livePeople = 0;
 
 // ---- Match settings ----
-const MATCH_SECONDS = 90;
+const MATCH_SECONDS = 20;
 const PADDLE_R = 42;
 const PUCK_R = 15;
 // ---- Tracking smoothing ----
@@ -45,6 +45,11 @@ let leavingForOther = false;
 function switchTvMode(mode, autostart) {
   if (leavingForOther && !autostart) return;
   leavingForOther = true;
+  try {
+    sessionStorage.setItem("stella-nova:tv-session", roomCode);
+  } catch (_) {
+    /* a missing flag makes the next load mint a new code and drop the game */
+  }
   const next = new URL(window.location.href);
   next.searchParams.set("mode", mode);
   if (autostart) next.searchParams.set("autostart", "1");

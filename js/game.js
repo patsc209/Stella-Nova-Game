@@ -11,7 +11,7 @@ let trails = { left: [], right: [] };
 
 let score = 0;
 let bestScore = 0;
-let timeLeft = 30;
+let timeLeft = 20;
 let gamePhase = "lobby"; // lobby | countdown | playing | paused | over
 let countdownValue = 3;
 let lastSpawn = 0;
@@ -22,7 +22,7 @@ let statusEl;
 
 const TRAIL_MAX_LEN = 14;
 const HIT_RADIUS_PAD = 18;
-const GAME_SECONDS = 30;
+const GAME_SECONDS = 20;
 const HAND_SMOOTH = 0.55;
 
 let sync = null;
@@ -35,6 +35,11 @@ let leavingForOther = false;
 function switchTvMode(mode, autostart) {
   if (leavingForOther && !autostart) return;
   leavingForOther = true;
+  try {
+    sessionStorage.setItem("stella-nova:tv-session", roomCode);
+  } catch (_) {
+    /* a missing flag makes the next load mint a new code and drop the game */
+  }
   const next = new URL(window.location.href);
   next.searchParams.set("mode", mode);
   if (autostart) next.searchParams.set("autostart", "1");

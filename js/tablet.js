@@ -7,7 +7,7 @@
       name: "Sun",
       game: "Star Slash",
       gameType: "stars",
-      blurb: "Slash rising stars for 30 seconds — first world",
+      blurb: "Slash rising stars for 20 seconds — first world",
       colour: "#ffb84d",
       playable: true,
       sun: true,
@@ -413,7 +413,7 @@
       title: "Play " + p.name + "?",
       body:
         p.gameType === "stars"
-          ? "Slash rising stars for 30 seconds. Your hands in front of the TV do the slashing."
+          ? "Slash rising stars for 20 seconds. Your hands in front of the TV do the slashing."
           : p.blurb + " Your hands in front of the TV move your alien.",
       primaryLabel: "Play " + p.game,
       secondaryLabel: "Not now",
@@ -1082,9 +1082,9 @@
       return;
     }
     const world = PLANETS.find((p) => p.id === selectedPlanetId);
-    const isOrbit = (state.gameType || (world && world.gameType)) === "orbit";
+    const isOrbit = currentGameType() === "orbit";
     const score = typeof state.score === "number" ? state.score : 0;
-    const timeLeft = typeof state.timeLeft === "number" ? state.timeLeft : isOrbit ? 90 : 30;
+    const timeLeft = typeof state.timeLeft === "number" ? state.timeLeft : 20;
     const liveTitle = document.getElementById("live-title");
 
     if (isOrbit && typeof state.scoreA === "number") {
@@ -1203,12 +1203,19 @@
       return;
     }
     awaitingStart = false;
+    sync.publish({
+      tabletReady: true,
+      playMode: selectedPlayMode,
+      gameType: currentGameType(),
+      worldId: selectedPlanetId,
+    });
     sync.send({ type: "command", action: "play" });
     // Resend play a couple times in case the TV is mid-switch between games
     setTimeout(() => sync && sync.send({ type: "command", action: "play" }), 900);
     setTimeout(() => sync && sync.send({ type: "command", action: "play" }), 1800);
+    document.getElementById("live-title").textContent =
+      currentGameType() === "orbit" ? "Orbit Rally get ready…" : "Get ready…";
     showScreen("live");
-    document.getElementById("live-title").textContent = "Starting…";
     applyState(sync.getState());
   }
 

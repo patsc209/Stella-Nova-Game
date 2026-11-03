@@ -45,6 +45,7 @@
     }
 
     const listeners = [];
+    const outbox = [];
     let channel = null;
     let socket = null;
     let destroyed = false;
@@ -85,6 +86,7 @@
 
       socket.addEventListener("open", () => {
         socket.send(JSON.stringify({ type: "join", room, role }));
+        flushOutbox();
       });
 
       socket.addEventListener("message", (event) => {
@@ -116,10 +118,14 @@
 
     connectSocket();
 
-    function wireSend(msg) {
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(msg));
+    function flushOutbox() {
+      if (!socket || socket.readyState !== WebSocket.OPEN) return;
+      while (outbox.length) {
+        socket.send(JSON.stringify(outbox.shift()));
       }
+    }
+
+    function wireSend(msg) {
       if (channel) {
         try {
           channel.postMessage(msg);
@@ -127,6 +133,14 @@
           /* ignore */
         }
       }
+      // The socket is still connecting when the tablet first publishes the
+      // chosen game. Hold that message and send it after join, or the TV
+      // never hears "orbit" and starts Star Slash.
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(msg));
+        return;
+      }
+      outbox.push(msg);
     }
 
     function publish(partialState) {
@@ -134,7 +148,7 @@
         room,
         phase: "lobby",
         score: 0,
-        timeLeft: 30,
+        timeLeft: 20,
         bestScore: 0,
         playerName: "Player",
         hostReady: false,
