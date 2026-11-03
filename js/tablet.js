@@ -174,6 +174,8 @@
     shell.classList.toggle("nav-visible", showNav);
     document.body.classList.toggle("on-home", name === "home");
     shell.classList.toggle("on-home", name === "home");
+    document.body.classList.toggle("on-intro", name === "intro");
+    shell.classList.toggle("on-intro", name === "intro");
     paintStars();
     if (name === "settings") renderProfileCard();
     if (showNav) {
@@ -253,6 +255,7 @@
       showScreen("alien");
       return;
     }
+    if (!user.introSeen) Auth.updateCurrentUser({ introSeen: true });
     renderHome(user);
     showScreen("home");
   }
@@ -481,37 +484,66 @@
     showScreen("connect");
   }
 
+  const RANKS = [
+    { level: 1, name: "Explorer", nextAt: 100, nextName: "Commander", look: "explorer" },
+    { level: 2, name: "Commander", nextAt: 400, nextName: "Ruler", look: "commander" },
+    { level: 3, name: "Ruler", nextAt: null, nextName: "", look: "ruler" },
+  ];
+
+  function rankForStars(stars) {
+    if (stars >= 400) return RANKS[2];
+    if (stars >= 100) return RANKS[1];
+    return RANKS[0];
+  }
+
+  function rankPortrait(look) {
+    const extra =
+      look === "commander"
+        ? `<path d="M38 34 h44 l-6 14 h-32z" fill="#f0c14a"/><circle cx="60" cy="30" r="6" fill="#f0c14a"/>`
+        : look === "ruler"
+          ? `<path d="M34 28 l8 16 h36 l8-16 -12 8 -14-16 -14 16z" fill="#f0c14a"/><path d="M28 78 h64 v18 h-64z" fill="#e23b4a"/>`
+          : `<rect x="34" y="40" width="52" height="14" rx="7" fill="#16324f"/><circle cx="46" cy="47" r="6" fill="#7ec8ff"/><circle cx="74" cy="47" r="6" fill="#7ec8ff"/><path d="M40 92 h40 l6 16 h-52z" fill="#e07040"/>`;
+    return `<svg viewBox="0 0 120 140" aria-hidden="true"><ellipse cx="60" cy="78" rx="36" ry="34" fill="#7c6cf0"/><circle cx="48" cy="74" r="6" fill="#fff"/><circle cx="72" cy="74" r="6" fill="#fff"/><circle cx="48" cy="75" r="3" fill="#16324f"/><circle cx="72" cy="75" r="3" fill="#16324f"/><path d="M50 90 Q60 98 70 90" stroke="#16324f" stroke-width="3" fill="none" stroke-linecap="round"/>${extra}</svg>`;
+  }
+
   function renderStats() {
     const user = Auth.getCurrentUser();
     if (!user) return;
-    const unlocked = user.unlockedPlanets || ["sun"];
-    document.getElementById("stat-stars").textContent = "✦ " + String(user.stars || 0);
-    document.getElementById("stat-planets").textContent = String(unlocked.length);
-
-    const worldsRow = document.getElementById("worlds-row");
-    worldsRow.innerHTML = PLANETS.map((p) => {
-      const open = unlocked.includes(p.id);
-      return `<div class="world-chip ${open ? "" : "locked-chip"}" title="${p.name}">
-        <span class="mini-orb" style="--p:${p.colour}"></span>
-        <span>${open ? p.name : "Locked"}</span>
-      </div>`;
-    }).join("");
-
-    renderStarsChart(user.history || []);
-
-    const list = document.getElementById("history-list");
-    const history = user.history || [];
-    if (!history.length) {
-      list.innerHTML = `<p class="muted">No sessions yet — play Star Slash on the Sun to begin.</p>`;
-      return;
+    const stars = user.stars || 0;
+    const rank = rankForStars(stars);
+    const next = RANKS.find((item) => item.level === rank.level + 1);
+    document.getElementById("stats-level").textContent = String(rank.level);
+    document.getElementById("rank-kicker").textContent = "Level " + rank.level;
+    document.getElementById("rank-name").textContent = rank.name;
+    document.getElementById("stat-stars").textContent = String(stars);
+    const progress = document.getElementById("rank-progress");
+    const fill = document.getElementById("rank-bar-fill");
+    if (next) {
+      progress.textContent = stars + "/" + rank.nextAt + " ★ to " + rank.nextName;
+      fill.style.width = Math.min(100, Math.round((stars / rank.nextAt) * 100)) + "%";
+    } else {
+      progress.textContent = "Max level";
+      fill.style.width = "100%";
     }
-    list.innerHTML = history
-      .map((h) => {
-        const days = Math.max(0, Math.floor((Date.now() - h.at) / 86400000));
-        const when = days === 0 ? "Today" : days === 1 ? "1 day ago" : days + " days ago";
-        return `<div class="history-row"><div><strong>${h.game}</strong><div class="muted">${when}</div></div><div class="star-chip compact">✦ ${h.stars}</div></div>`;
-      })
-      .join("");
+    ReGradeAlien.renderInto(document.getElementById("stats-alien"), user.alien, 120);
+    const nextArt = document.getElementById("stats-next-art");
+    nextArt.innerHTML = next
+      ? rankPortrait(next.look)
+      : `<p class="rank-max">Max level</p>`;
+    document.getElementById("rank-row").innerHTML = RANKS.map((item) => {
+      const open = stars >= (item.level === 1 ? 0 : item.level === 2 ? 100 : 400);
+      const current = item.level === rank.level;
+      const line = item.nextAt
+        ? stars + "/" + item.nextAt + " ★ to " + item.nextName
+        : "Max level";
+      return `<article class="rank-card${current ? " is-current" : ""}${open ? "" : " is-locked"}">
+        ${rankPortrait(item.look)}
+        <p class="rank-kicker">Level ${item.level}</p>
+        <h3>${item.name}</h3>
+        <p class="rank-progress">${open ? line : "Locked"}</p>
+        <div class="rank-bar" aria-hidden="true"><span style="width:${open && item.nextAt ? Math.min(100, Math.round((stars / item.nextAt) * 100)) : open ? 100 : 0}%"></span></div>
+      </article>`;
+    }).join("");
   }
 
   function renderStarsChart(history) {
@@ -594,6 +626,9 @@
     });
     const cats = document.getElementById("alien-cats");
     if (cats) cats.hidden = shopTab === "wardrobe";
+
+    const saveBtn = document.getElementById("btn-alien-save");
+    if (saveBtn) saveBtn.textContent = user && user.introSeen ? "Save" : "Start Exploring";
 
     const presets = document.getElementById("alien-presets");
     presets.hidden = shopTab !== "customise";
@@ -809,11 +844,51 @@
     });
   });
 
+  const INTRO_LINES = [
+    "You are an alien on your planet. You leave home to explore the galaxy.",
+    "Each planet has a game.",
+    "Each game lets you collect stars.",
+    "Use the stars to unlock planets.",
+    "Keep exploring to level up.",
+  ];
+  let introTimer = null;
+
+  function playIntro(alien) {
+    if (introTimer) clearInterval(introTimer);
+    ReGradeAlien.renderInto(document.getElementById("intro-alien"), alien, 72);
+    const caption = document.getElementById("intro-caption");
+    const traveler = document.getElementById("intro-traveler");
+    let step = 0;
+    caption.textContent = INTRO_LINES[0];
+    traveler.classList.remove("go");
+    showScreen("intro");
+    requestAnimationFrame(() => {
+      void traveler.offsetWidth;
+      traveler.classList.add("go");
+    });
+    introTimer = setInterval(() => {
+      step += 1;
+      if (step >= INTRO_LINES.length) {
+        clearInterval(introTimer);
+        introTimer = null;
+        renderHome();
+        showScreen("home");
+        return;
+      }
+      caption.textContent = INTRO_LINES[step];
+    }, 3000);
+  }
+
   document.getElementById("btn-alien-save").addEventListener("click", () => {
     const clean = keptAlien(Auth.getCurrentUser());
+    const firstTime = !Auth.getCurrentUser().introSeen;
     alienDraft = clean;
     tryingNote = "";
-    Auth.updateCurrentUser({ alien: clean, onboarded: true });
+    Auth.updateCurrentUser({ alien: clean, onboarded: true, introSeen: true });
+    if (firstTime) {
+      playIntro(clean);
+      return;
+    }
     renderHome();
     showScreen("home");
   });
@@ -867,6 +942,15 @@
   document.getElementById("btn-edit-alien").addEventListener("click", () => {
     const user = Auth.getCurrentUser();
     alienDraft = ReGradeAlien.mergeAlien(user && user.alien);
+    renderAlienCreator();
+    showScreen("alien");
+  });
+
+  document.getElementById("btn-stats-customise").addEventListener("click", () => {
+    const user = Auth.getCurrentUser();
+    if (!user) return;
+    alienDraft = ReGradeAlien.mergeAlien(user.alien);
+    shopTab = "customise";
     renderAlienCreator();
     showScreen("alien");
   });
@@ -929,7 +1013,7 @@
   function wireRoomInputs() {
     roomInputs.forEach((input, index) => {
       input.addEventListener("input", () => {
-        input.value = input.value.replace(/[^a-z0-9]/gi, "").slice(0, 1).toUpperCase();
+        input.value = input.value.replace(/\D/g, "").slice(0, 1);
         document.getElementById("connect-error").textContent = "";
         if (input.value && index < roomInputs.length - 1) roomInputs[index + 1].focus();
       });
@@ -938,7 +1022,7 @@
       });
       input.addEventListener("paste", (e) => {
         const text = (e.clipboardData || window.clipboardData).getData("text") || "";
-        const cleaned = text.replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 4);
+        const cleaned = text.replace(/\D/g, "").slice(0, 4);
         if (!cleaned) return;
         e.preventDefault();
         cleaned.split("").forEach((ch, i) => {

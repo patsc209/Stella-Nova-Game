@@ -29,6 +29,18 @@ let sync = null;
 let roomCode = "";
 let playerName = "Player";
 let smoothHands = { left: null, right: null };
+let tabletGameType = null;
+let leavingForOther = false;
+
+function switchTvMode(mode, autostart) {
+  if (leavingForOther && !autostart) return;
+  leavingForOther = true;
+  const next = new URL(window.location.href);
+  next.searchParams.set("mode", mode);
+  if (autostart) next.searchParams.set("autostart", "1");
+  else next.searchParams.delete("autostart");
+  window.location.replace(next.toString());
+}
 
 function setup() {
   const canvas = createCanvas(windowWidth, windowHeight);
@@ -117,13 +129,10 @@ function initRoomAndSync() {
     if (msg.type === "hello" && msg.role === "tablet") sync.publish({ hostReady: true });
     if (msg.type === "state" && msg.from === "tablet" && msg.state) {
       if (msg.state.playerName) playerName = msg.state.playerName;
-      // If tablet picked a different game, hop to the unified TV mode for it
-      if (msg.state.gameType === "orbit" && gamePhase === "lobby") {
-        const next = new URL(window.location.href);
-        next.searchParams.set("mode", "orbit");
-        next.searchParams.delete("autostart");
-        window.location.replace(next.toString());
+      if (msg.state.gameType === "stars" || msg.state.gameType === "orbit") {
+        tabletGameType = msg.state.gameType;
       }
+      if (tabletGameType === "orbit") switchTvMode("orbit", false);
     }
   });
 
@@ -137,6 +146,10 @@ function initRoomAndSync() {
 }
 
 function handleCommand(action) {
+  if ((action === "play" || action === "restart") && tabletGameType === "orbit") {
+    switchTvMode("orbit", true);
+    return;
+  }
   if (action === "play" && (gamePhase === "lobby" || gamePhase === "over")) {
     startCountdown();
   } else if (action === "pause" && gamePhase === "playing") {
@@ -158,7 +171,7 @@ function setPhase(phase) {
 }
 
 function publishGameState() {
-  if (!sync) return;
+  if (!sync || leavingForOther) return;
   sync.publish({
     phase: gamePhase,
     score,

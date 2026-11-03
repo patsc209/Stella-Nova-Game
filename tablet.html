@@ -121,7 +121,25 @@
             </div>
           </div>
           <div class="alien-presets" id="alien-presets"></div>
-          <button class="btn btn-regrade btn-block" id="btn-alien-save" type="button">Save &amp; continue</button>
+          <button class="btn btn-regrade btn-block" id="btn-alien-save" type="button">Start Exploring</button>
+        </div>
+      </section>
+
+      <!-- INTRO STORY -->
+      <section class="screen" id="screen-intro" data-screen="intro">
+        <div class="intro-sky">
+          <svg class="intro-path" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <polyline points="16,58 38,48 58,62 82,44" />
+          </svg>
+          <div class="intro-world" style="left:16%;top:58%"><span class="intro-planet home"></span></div>
+          <div class="intro-world" style="left:38%;top:48%"><span class="intro-planet" style="--p:#c5c9d1"></span></div>
+          <div class="intro-world" style="left:58%;top:62%"><span class="intro-planet" style="--p:#3a74e0"></span></div>
+          <div class="intro-world" style="left:82%;top:44%"><span class="intro-planet" style="--p:#f07828"></span></div>
+          <div class="intro-traveler" id="intro-traveler">
+            <div id="intro-alien"></div>
+            <svg class="intro-ship" viewBox="0 0 48 28" aria-hidden="true"><ellipse cx="24" cy="16" rx="16" ry="6" fill="#e7eeff"/><ellipse cx="24" cy="13" rx="7" ry="6" fill="#8fd0ff"/><circle cx="24" cy="13" r="2.5" fill="#1c2340"/></svg>
+          </div>
+          <p class="intro-caption" id="intro-caption"></p>
         </div>
       </section>
 
@@ -147,33 +165,37 @@
 
       <!-- STATS -->
       <section class="screen" id="screen-stats" data-screen="stats">
-        <div class="panel soft stats-panel">
-          <h1>Your journey</h1>
-          <div class="stat-grid">
-            <div class="stat-card">
-              <div class="stat-num" id="stat-stars">✦ 0</div>
-              <div class="stat-label">Total stars collected</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-num" id="stat-planets">1</div>
-              <div class="stat-label">Worlds unlocked</div>
-            </div>
-          </div>
-          <h2 class="subhead">Stars slashed</h2>
-          <div class="journey-chart-card">
-            <div class="journey-chart-head">
-              <div>
-                <strong>Recent Star Slash rounds</strong>
-                <div class="muted" id="chart-subtitle">Play to build your trail</div>
+        <div class="stats-board">
+          <h1>Statistics</h1>
+          <div class="stats-top">
+            <article class="rank-hero">
+              <div class="rank-hero-alien" id="stats-alien"></div>
+              <p class="rank-kicker" id="rank-kicker">Level 1</p>
+              <h2 id="rank-name">Explorer</h2>
+              <p class="rank-progress" id="rank-progress">0/100 ★ to Commander</p>
+              <div class="rank-bar" aria-hidden="true"><span id="rank-bar-fill"></span></div>
+              <button class="btn btn-regrade btn-block" id="btn-stats-customise" type="button">Customise avatar</button>
+            </article>
+            <div class="stats-side">
+              <div class="stats-level-box">Level: <strong id="stats-level">1</strong></div>
+              <div class="stats-mid">
+                <div class="stats-next">
+                  <p>Next look</p>
+                  <div id="stats-next-art"></div>
+                </div>
+                <div class="stats-total">
+                  <p>Total stars</p>
+                  <div class="star-count">
+                    <svg viewBox="0 0 100 96" aria-hidden="true">
+                      <polygon points="50,2 63,34 97,34 70,55 80,90 50,70 20,90 30,55 3,34 37,34" fill="#f0c14a" stroke="#e09a22" stroke-width="2" stroke-linejoin="round"/>
+                    </svg>
+                    <strong id="stat-stars">0</strong>
+                  </div>
+                </div>
               </div>
-              <div class="chart-delta" id="chart-delta">✦ 0</div>
             </div>
-            <svg class="journey-chart" id="stars-chart" viewBox="0 0 320 120" role="img" aria-label="Stars collected over recent sessions"></svg>
           </div>
-          <h2 class="subhead">Unlocked worlds</h2>
-          <div class="worlds-row" id="worlds-row"></div>
-          <h2 class="subhead">Recent sessions</h2>
-          <div class="history-list" id="history-list"></div>
+          <div class="rank-row" id="rank-row"></div>
         </div>
       </section>
 
@@ -253,10 +275,10 @@
           <p id="connect-hint">The code is on the TV. Your hands in front of that camera play — tapping here does not.</p>
           <label class="field-label">Room code</label>
           <div class="room-inputs" id="room-inputs">
-            <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 1" />
-            <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 2" />
-            <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 3" />
-            <input maxlength="1" inputmode="text" autocomplete="off" aria-label="Code digit 4" />
+            <input maxlength="1" inputmode="numeric" autocomplete="off" aria-label="Code digit 1" />
+            <input maxlength="1" inputmode="numeric" autocomplete="off" aria-label="Code digit 2" />
+            <input maxlength="1" inputmode="numeric" autocomplete="off" aria-label="Code digit 3" />
+            <input maxlength="1" inputmode="numeric" autocomplete="off" aria-label="Code digit 4" />
           </div>
           <label class="field-label" for="player-name">Your name</label>
           <input class="name-input" id="player-name" maxlength="16" placeholder="Izzy" autocomplete="nickname" />

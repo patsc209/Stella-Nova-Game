@@ -39,6 +39,18 @@ let sync = null;
 let roomCode = "";
 let playerName = "Player";
 let playMode = "solo"; // solo => AI plays B; multi => the person on the right plays B
+let tabletGameType = null;
+let leavingForOther = false;
+
+function switchTvMode(mode, autostart) {
+  if (leavingForOther && !autostart) return;
+  leavingForOther = true;
+  const next = new URL(window.location.href);
+  next.searchParams.set("mode", mode);
+  if (autostart) next.searchParams.set("autostart", "1");
+  else next.searchParams.delete("autostart");
+  window.location.replace(next.toString());
+}
 let forceSoloAI = true;
 let playerBLive = false;
 let playerBMiss = 0;
@@ -129,14 +141,14 @@ function initRoomAndSync() {
     if (msg.type === "command") handleCommand(msg.action);
     if (msg.type === "hello" && msg.role === "tablet") publishOrbitState();
     if ((msg.type === "state" || msg.type === "joined") && msg.state) {
-      if (msg.from !== "game" && msg.state.playMode) applyPlayMode(msg.state.playMode);
+      // Only the tablet's choice counts. A late room echo can still say solo
+      // and would put the computer back on the pink alien.
+      if (msg.from === "tablet" && msg.state.playMode) applyPlayMode(msg.state.playMode);
       if (msg.state.playerName && msg.from !== "game") playerName = msg.state.playerName;
-      if (msg.from === "tablet" && msg.state.gameType === "stars" && gameState === "lobby") {
-        const next = new URL(window.location.href);
-        next.searchParams.set("mode", "stars");
-        next.searchParams.delete("autostart");
-        window.location.replace(next.toString());
+      if (msg.from === "tablet" && (msg.state.gameType === "stars" || msg.state.gameType === "orbit")) {
+        tabletGameType = msg.state.gameType;
       }
+      if (msg.from === "tablet" && tabletGameType === "stars") switchTvMode("stars", false);
     }
   });
 
@@ -154,7 +166,7 @@ function applyPlayMode(mode) {
 }
 
 function publishOrbitState() {
-  if (!sync) return;
+  if (!sync || leavingForOther) return;
   // Map internal states to tablet phases
   let phase = "lobby";
   if (gameState === "intro" || gameState === "demo" || gameState === "countdown") phase = "countdown";
@@ -179,6 +191,10 @@ function publishOrbitState() {
 }
 
 function handleCommand(action) {
+  if ((action === "play" || action === "restart") && tabletGameType === "stars") {
+    switchTvMode("stars", true);
+    return;
+  }
   if (action === "play" && (gameState === "lobby" || gameState === "over")) {
     startOrbitMatch();
   } else if (action === "pause" && gameState === "playing") {
@@ -450,18 +466,36 @@ function followPaddle(paddle, hand, minX, maxX) {
 }
 
 function updatePaddles() {
-  // People are bodies sorted left-to-right. The person on the left drives
-  // the blue alien; in multiplayer the person on the right drives pink.
-  // One person's second hand does not become player 2.
+  // Left hand drives the blue alien. In multiplayer the other hand drives
+  // pink. Pose tracking often sees only one body when two people stand
+  // together, so two hands are enough — the computer does not take pink.
   const tips = handsTracker ? handsTracker.update() : [];
   const people = handsTracker && handsTracker.people ? handsTracker.people : [];
-  let leftTip = people[0] ? people[0].tip : null;
-  let rightTip = people[1] ? people[1].tip : null;
-  if (!people.length) {
-    leftTip = tips[0] || null;
-    rightTip = tips.length > 1 ? tips[tips.length - 1] : null;
+  const hands = tips.slice().sort(function (a, b) {
+    return a.x - b.x;
+  });
+  let leftTip = null;
+  let rightTip = null;
+
+  if (!forceSoloAI) {
+    if (hands.length >= 2) {
+      leftTip = hands[0];
+      rightTip = hands[hands.length - 1];
+    } else if (people.length >= 2) {
+      leftTip = people[0].tip;
+      rightTip = people[people.length - 1].tip;
+    } else if (hands.length === 1) {
+      leftTip = hands[0];
+    } else if (people[0]) {
+      leftTip = people[0].tip;
+    }
+  } else if (people.length) {
+    leftTip = people[0].tip;
+  } else {
+    leftTip = hands[0] || null;
   }
-  livePeople = people.length || (rightTip ? 2 : leftTip ? 1 : 0);
+
+  livePeople = rightTip ? 2 : leftTip ? 1 : 0;
 
   if (leftTip) {
     followPaddle(paddleA, leftTip, PADDLE_R, width / 2 - PADDLE_R);
@@ -471,14 +505,14 @@ function updatePaddles() {
     playerBMiss = 0;
     playerBLive = true;
     followPaddle(paddleB, rightTip, width / 2 + PADDLE_R, width - PADDLE_R);
-  } else if (!forceSoloAI && playerBLive && playerBMiss < 12) {
-    playerBMiss += 1;
-  } else {
+  } else if (forceSoloAI) {
     playerBLive = false;
     playerBMiss = 0;
     paddleB.x = lerp(paddleB.x, width - 90, 0.03);
     paddleB.y = lerp(paddleB.y, puck.y, 0.035);
     paddleB.y = constrain(paddleB.y, PADDLE_R, height - PADDLE_R);
+  } else {
+    playerBLive = false;
   }
 }
 
@@ -688,7 +722,7 @@ function drawHUD() {
   text("⏱ " + timeStr, 16, 26);
 
   textAlign(RIGHT, CENTER);
-  text(forceSoloAI || !playerBLive ? "Player B: AI" : "Player B: live", width - 16, 26);
+  text(forceSoloAI ? "Player B: AI" : playerBLive ? "Player B: live" : "Player B: waiting", width - 16, 26);
   textAlign(CENTER, TOP);
   textSize(14);
   fill(255, 200);
