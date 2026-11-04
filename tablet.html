@@ -56,7 +56,7 @@
             <button class="btn btn-regrade btn-block" id="btn-login" type="button">Log in</button>
             <button class="btn btn-ghost btn-block" id="btn-login-to-signup" type="button">Create an account</button>
           </div>
-          <p class="form-error" id="login-error"></p>
+          <p class="form-error" id="login-error" aria-live="polite"></p>
         </div>
       </section>
 
@@ -75,7 +75,7 @@
             <button class="btn btn-regrade btn-block" id="btn-signup" type="button">Continue</button>
             <button class="btn btn-ghost btn-block" id="btn-signup-to-login" type="button">I already have an account</button>
           </div>
-          <p class="form-error" id="signup-error"></p>
+          <p class="form-error" id="signup-error" aria-live="polite"></p>
         </div>
       </section>
 
@@ -88,7 +88,7 @@
           <label class="field-label" for="profile-name">What should we call you?</label>
           <input class="name-input" id="profile-name" maxlength="16" placeholder="Izzy" />
           <button class="btn btn-regrade btn-block" id="btn-profile-continue" type="button">Save &amp; continue</button>
-          <p class="form-error" id="profile-error"></p>
+          <p class="form-error" id="profile-error" aria-live="polite"></p>
         </div>
       </section>
 
@@ -150,7 +150,7 @@
           <p class="home-caption" id="home-caption">Tap the Sun to play.</p>
           <p class="home-tip" id="home-tip">Locked worlds open after a round earns enough stars.</p>
           <button class="btn btn-ghost map-explore" id="btn-explore" type="button">See all worlds</button>
-          <div class="unlock-toast" id="unlock-toast" hidden></div>
+          <div class="unlock-toast" id="unlock-toast" hidden aria-live="polite"></div>
         </div>
       </section>
 
@@ -213,7 +213,9 @@
             <button class="settings-row" id="btn-edit-alien" type="button"><span>Alien design</span><span>›</span></button>
             <button class="settings-row" id="btn-edit-profile" type="button"><span>Account</span><span>›</span></button>
             <div class="settings-row static"><span>Accessibility</span><span class="muted">Prototype</span></div>
-            <div class="settings-row static"><span>Sound</span><span class="muted">On</span></div>
+            <button class="settings-row" id="btn-sound" type="button" aria-pressed="true">
+              <span>Sound</span><span class="muted" id="sound-label">On</span>
+            </button>
             <button class="settings-row danger" id="btn-logout" type="button"><span>Log out</span><span>›</span></button>
             <button class="settings-row danger" id="btn-next-tester" type="button"><span>Reset for next tester</span><span>›</span></button>
             <button class="settings-row danger" id="btn-reset-all" type="button"><span>Clear all demo data</span><span>›</span></button>
@@ -285,7 +287,7 @@
           <div class="stack">
             <button class="btn btn-regrade btn-block" id="btn-connect" type="button">Join &amp; start</button>
           </div>
-          <p class="form-error" id="connect-error"></p>
+          <p class="form-error" id="connect-error" aria-live="polite"></p>
         </div>
       </section>
 
@@ -363,6 +365,7 @@
                 <p>Get the most stars before the time is up</p>
               </article>
             </div>
+            <p class="howto-note">Each round is 20 seconds. Pause on this tablet if you need a break. On the TV, you can tap a star as well as slash it.</p>
           </div>
 
           <div id="howto-orbit" hidden>
@@ -412,7 +415,7 @@
                       <polygon points="70,64 76,76 90,76 79,85 83,98 70,90 57,98 61,85 50,76 64,76" fill="#f5b942"/>
                       <path d="M96 64 H118" stroke="#f5b942" stroke-width="4" stroke-linecap="round"/>
                       <path d="M110 56 L122 64 L110 72" fill="none" stroke="#f5b942" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-                      <rect x="108" y="18" width="52" height="22" rx="11" fill="#ff8a65"/>
+                      <rect x="108" y="18" width="52" height="22" rx="11" fill="#3c3489"/>
                       <text x="134" y="34" text-anchor="middle" font-size="12" font-family="Sora, sans-serif" font-weight="700" fill="#fff">+1</text>
                     </svg>
                   </div>
@@ -430,10 +433,11 @@
                       <path d="M140 70 L154 78" stroke="#e76f51" stroke-width="3" stroke-linecap="round"/>
                     </svg>
                   </div>
-                  <p>Most points when the timer ends wins</p>
-                </article>
-              </div>
+                <p>Most points when the timer ends wins</p>
+              </article>
             </div>
+            <p class="howto-note">Each round is 20 seconds. Pause on this tablet if you need a break.</p>
+          </div>
           </div>
 
           <div class="howto-dots" id="howto-dots" hidden>
@@ -449,8 +453,10 @@
         <div class="live-card live-sky">
           <div class="orbit" aria-hidden="true"></div>
           <h1 id="live-title">You’re playing on TV. Look up and slash stars!</h1>
-          <div class="score-live" id="live-score">0</div>
-          <div class="timer-live" id="live-timer">30s left</div>
+          <div aria-live="polite" aria-atomic="true">
+            <div class="score-live" id="live-score">0</div>
+            <div class="timer-live" id="live-timer">20s left</div>
+          </div>
           <button class="btn btn-accent fab-pause" id="btn-pause" type="button">Pause Game</button>
         </div>
       </section>
@@ -471,7 +477,7 @@
           <p id="results-blurb">You collected stars!</p>
           <div class="results-score" id="results-score">0</div>
           <div class="results-meta" id="results-meta">Need 12+ stars in a round to unlock the next world.</div>
-          <p class="unlock-banner" id="results-unlock" hidden></p>
+          <p class="unlock-banner" id="results-unlock" hidden aria-live="polite"></p>
           <div class="stack">
             <button class="btn btn-accent btn-block" id="btn-play-again" type="button">Play again</button>
             <button class="btn btn-regrade btn-block" id="btn-results-home" type="button">Back to your universe</button>

@@ -85,6 +85,8 @@ function setup() {
   initRoomAndSync();
   lastSpawn = millis();
   lastSecondTick = millis();
+  window.addEventListener("pointerdown", unlockStarSound);
+  window.addEventListener("keydown", unlockStarSound);
 }
 
 function windowResized() {
@@ -116,6 +118,7 @@ function initRoomAndSync() {
 
   const existing = PlanetHockeySync.loadState(roomCode);
   if (existing && existing.bestScore) bestScore = existing.bestScore;
+  if (existing && existing.sound) applySoundPref(existing.sound);
 
   sync = PlanetHockeySync.createSync(roomCode, "game");
   sync.publish({
@@ -134,6 +137,7 @@ function initRoomAndSync() {
     if (msg.type === "hello" && msg.role === "tablet") sync.publish({ hostReady: true });
     if (msg.type === "state" && msg.from === "tablet" && msg.state) {
       if (msg.state.playerName) playerName = msg.state.playerName;
+      if (msg.state.sound) applySoundPref(msg.state.sound);
       if (msg.state.gameType === "stars" || msg.state.gameType === "orbit") {
         tabletGameType = msg.state.gameType;
       }
@@ -187,6 +191,20 @@ function publishGameState() {
     countdown: countdownValue,
     gameType: "stars",
   });
+  announceTvStatus();
+}
+
+function announceTvStatus() {
+  const el = document.getElementById("tv-live");
+  if (!el) return;
+  let text = "Star Slash. ";
+  if (gamePhase === "lobby") text += "Waiting to start.";
+  else if (gamePhase === "countdown") text += "Get ready. " + countdownValue + ".";
+  else if (gamePhase === "playing") text += "Score " + score + ". " + timeLeft + " seconds left.";
+  else if (gamePhase === "paused") text += "Paused. Score " + score + ". " + timeLeft + " seconds left.";
+  else if (gamePhase === "over") text += "Round over. Score " + score + ".";
+  if (el.textContent === text) return;
+  el.textContent = text;
 }
 
 function startCountdown() {
@@ -201,6 +219,7 @@ function startCountdown() {
   countdownTick = millis();
   lastSpawn = millis();
   lastSecondTick = millis();
+  if (starAudio && starAudio.state === "suspended") starAudio.resume();
   setPhase("countdown");
 }
 
@@ -478,16 +497,114 @@ function distToSegment(px, py, x1, y1, x2, y2) {
   return dist(px, py, x1 + t * dx, y1 + t * dy);
 }
 
+let starAudio = null;
+let starNoise = null;
+let starSoundOn = true;
+
+function applySoundPref(value) {
+  if (value !== "on" && value !== "off") return;
+  starSoundOn = value !== "off";
+  try {
+    localStorage.setItem("stella-nova:sound", value);
+  } catch (_) {
+    /* a blocked store just keeps the choice for this page */
+  }
+}
+
+try {
+  applySoundPref(localStorage.getItem("stella-nova:sound") === "off" ? "off" : "on");
+} catch (_) {
+  starSoundOn = true;
+}
+
+window.addEventListener("storage", (event) => {
+  if (event.key === "stella-nova:sound") applySoundPref(event.newValue);
+});
+
+function unlockStarSound() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  if (!starAudio) starAudio = new AC();
+  if (starAudio.state === "suspended") starAudio.resume();
+}
+
+function playStarHit() {
+  if (!starSoundOn) return;
+  unlockStarSound();
+  if (!starAudio) return;
+  if (starAudio.state !== "running") {
+    const pending = starAudio.resume();
+    if (pending && pending.then) {
+      pending.then(() => {
+        if (starAudio && starAudio.state === "running") playStarHitNow();
+      }).catch(() => {});
+    }
+    return;
+  }
+  playStarHitNow();
+}
+
+function playStarHitNow() {
+  if (!starAudio || starAudio.state !== "running") return;
+  const nowStamp = Date.now();
+  try {
+    localStorage.setItem("stella-nova:last-hit", String(nowStamp));
+  } catch (_) {
+    /* the chime still plays on this screen */
+  }
+  const ctx = starAudio;
+  const t = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.5;
+  master.connect(ctx.destination);
+
+  const osc = ctx.createOscillator();
+  const tone = ctx.createGain();
+  osc.type = "triangle";
+  const pitch = 720 + Math.random() * 260;
+  osc.frequency.setValueAtTime(pitch, t);
+  osc.frequency.exponentialRampToValueAtTime(pitch * 1.7, t + 0.08);
+  tone.gain.setValueAtTime(0.0001, t);
+  tone.gain.exponentialRampToValueAtTime(0.9, t + 0.012);
+  tone.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+  osc.connect(tone);
+  tone.connect(master);
+  osc.start(t);
+  osc.stop(t + 0.16);
+
+  if (!starNoise) {
+    const frames = Math.floor(ctx.sampleRate * 0.05);
+    starNoise = ctx.createBuffer(1, frames, ctx.sampleRate);
+    const data = starNoise.getChannelData(0);
+    for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = starNoise;
+  const click = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  filter.type = "highpass";
+  filter.frequency.value = 1600;
+  click.gain.setValueAtTime(0.45, t);
+  click.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+  noise.connect(filter);
+  filter.connect(click);
+  click.connect(master);
+  noise.start(t);
+  noise.stop(t + 0.05);
+}
+
 function popStar(index) {
   const c = stars[index];
   spawnParticles(c.x, c.y, c.hue);
   stars.splice(index, 1);
   score += 1;
   if (score > bestScore) bestScore = score;
+  playStarHit();
   publishGameState();
 }
 
 function spawnParticles(x, y, hue) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   colorMode(HSB, 360, 100, 100, 255);
   for (let i = 0; i < 14; i++) {
     const angle = random(TWO_PI);
@@ -579,6 +696,17 @@ function drawGameOver() {
   textSize(18);
   fill(200);
   text("Best  " + bestScore + "   ·   Use the tablet to continue", width / 2, height / 2 + 48);
+}
+
+function mousePressed() {
+  if (gamePhase !== "playing") return;
+  for (let i = stars.length - 1; i >= 0; i--) {
+    const c = stars[i];
+    if (dist(mouseX, mouseY, c.x, c.y) < c.r + HIT_RADIUS_PAD) {
+      popStar(i);
+      return;
+    }
+  }
 }
 
 function keyPressed() {

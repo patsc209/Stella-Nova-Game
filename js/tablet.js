@@ -161,6 +161,9 @@
   let lastUnlockMessage = "";
   let awaitingStart = false;
   let howtoPage = 0;
+  let heardScore = 0;
+  let hitAudio = null;
+  let hitNoise = null;
 
   const roomInputs = Array.from(document.querySelectorAll("#room-inputs input"));
 
@@ -330,8 +333,8 @@
       const toast = document.getElementById("unlock-toast");
       const world = PLANETS.find((p) => p.id === celebrateId);
       if (toast && world) {
-        toast.textContent = "New world: " + world.name + " is on your map.";
         toast.hidden = false;
+        toast.textContent = "New world: " + world.name + " is on your map.";
         toast.classList.add("show");
         setTimeout(() => {
           toast.classList.remove("show");
@@ -427,6 +430,11 @@
 
   let modalAction = null;
   let modalSecondaryAction = null;
+  let modalReturnFocus = null;
+
+  function modalButtons() {
+    return [...document.querySelectorAll("#planet-modal button")].filter((el) => !el.hidden);
+  }
 
   function showPlanetModal({ planet, locked, title, body, primaryLabel, secondaryLabel, onPrimary, onSecondary }) {
     const modal = document.getElementById("planet-modal");
@@ -447,13 +455,17 @@
       secondary.hidden = true;
       modalSecondaryAction = null;
     }
+    modalReturnFocus = document.activeElement;
     modal.hidden = false;
+    primary.focus();
   }
 
   function hidePlanetModal() {
     document.getElementById("planet-modal").hidden = true;
     modalAction = null;
     modalSecondaryAction = null;
+    if (modalReturnFocus && typeof modalReturnFocus.focus === "function") modalReturnFocus.focus();
+    modalReturnFocus = null;
   }
 
   function startPlanetPlay(id) {
@@ -962,6 +974,85 @@
     showScreen("profile");
   });
 
+  function unlockTabletHit() {
+    if (soundChoice() === "off") return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!hitAudio) hitAudio = new AC();
+    if (hitAudio.state === "suspended") hitAudio.resume();
+  }
+
+  function playTabletHit() {
+    if (soundChoice() === "off") return;
+    unlockTabletHit();
+    if (!hitAudio) return;
+    if (hitAudio.state !== "running") {
+      hitAudio.resume().then(() => {
+        if (hitAudio && hitAudio.state === "running") playTabletHitNow();
+      }).catch(() => {});
+      return;
+    }
+    playTabletHitNow();
+  }
+
+  function playTabletHitNow() {
+    const ctx = hitAudio;
+    if (!ctx || ctx.state !== "running") return;
+    try {
+      localStorage.setItem("stella-nova:last-hit", String(Date.now()));
+    } catch (_) {
+      /* the chime still plays */
+    }
+    const t = ctx.currentTime;
+    const master = ctx.createGain();
+    master.gain.value = 0.5;
+    master.connect(ctx.destination);
+
+    const osc = ctx.createOscillator();
+    const tone = ctx.createGain();
+    osc.type = "triangle";
+    const pitch = 720 + Math.random() * 260;
+    osc.frequency.setValueAtTime(pitch, t);
+    osc.frequency.exponentialRampToValueAtTime(pitch * 1.7, t + 0.08);
+    tone.gain.setValueAtTime(0.0001, t);
+    tone.gain.exponentialRampToValueAtTime(0.9, t + 0.012);
+    tone.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    osc.connect(tone);
+    tone.connect(master);
+    osc.start(t);
+    osc.stop(t + 0.18);
+  }
+
+  function soundChoice() {
+    try {
+      return localStorage.getItem("stella-nova:sound") === "off" ? "off" : "on";
+    } catch (_) {
+      return "on";
+    }
+  }
+
+  function renderSound() {
+    const on = soundChoice() === "on";
+    const btn = document.getElementById("btn-sound");
+    const label = document.getElementById("sound-label");
+    if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
+    if (label) label.textContent = on ? "On" : "Off";
+  }
+
+  document.getElementById("btn-sound").addEventListener("click", () => {
+    const next = soundChoice() === "on" ? "off" : "on";
+    try {
+      localStorage.setItem("stella-nova:sound", next);
+    } catch (_) {
+      /* the button still updates for this visit */
+    }
+    renderSound();
+    if (next === "on") playTabletHit();
+    if (sync) sync.publish({ sound: next });
+  });
+  window.addEventListener("pointerdown", unlockTabletHit);
+  renderSound();
+
   document.getElementById("btn-logout").addEventListener("click", () => {
     Auth.logout();
     if (sync) {
@@ -1087,6 +1178,24 @@
     const timeLeft = typeof state.timeLeft === "number" ? state.timeLeft : 20;
     const liveTitle = document.getElementById("live-title");
 
+    if (!isOrbit && state.phase === "playing" && score > heardScore) {
+      let tvPlayed = false;
+      try {
+        tvPlayed = Date.now() - Number(localStorage.getItem("stella-nova:last-hit") || 0) < 400;
+      } catch (_) {
+        tvPlayed = false;
+      }
+      if (!tvPlayed) {
+        const hits = Math.min(3, score - heardScore);
+        for (let n = 0; n < hits; n++) playTabletHit();
+      }
+      heardScore = score;
+    } else if (state.phase === "countdown" || state.phase === "lobby") {
+      heardScore = 0;
+    } else if (state.phase === "playing") {
+      heardScore = score;
+    }
+
     if (isOrbit && typeof state.scoreA === "number") {
       document.getElementById("live-score").textContent = state.scoreA + " — " + (state.scoreB || 0);
     } else {
@@ -1131,14 +1240,14 @@
         if (progress && progress.unlockedId) {
           const next = PLANETS.find((p) => p.id === progress.unlockedId);
           lastUnlockMessage = next ? "New world unlocked: " + next.name : "";
-          unlockEl.textContent = lastUnlockMessage;
           unlockEl.hidden = false;
+          unlockEl.textContent = lastUnlockMessage;
           if (homeBtn && next) homeBtn.textContent = "Fly to " + next.name;
           sessionStorage.setItem("stella-nova:celebrate-unlock", progress.unlockedId);
         } else if (starsEarned < Auth.UNLOCK_SCORE) {
+          unlockEl.hidden = false;
           unlockEl.textContent =
             "Score ★ " + Auth.UNLOCK_SCORE + "+ in one round to unlock the next world.";
-          unlockEl.hidden = false;
           if (homeBtn) homeBtn.textContent = "Back to your universe";
         } else {
           unlockEl.hidden = true;
@@ -1187,6 +1296,7 @@
       playMode: selectedPlayMode,
       gameType: (PLANETS.find((p) => p.id === selectedPlanetId) || {}).gameType || "stars",
       worldId: selectedPlanetId,
+      sound: soundChoice(),
     });
     sync.on((msg) => {
       if (msg.type === "state" && msg.state) applyState(msg.state);
@@ -1203,11 +1313,14 @@
       return;
     }
     awaitingStart = false;
+    heardScore = 0;
+    unlockTabletHit();
     sync.publish({
       tabletReady: true,
       playMode: selectedPlayMode,
       gameType: currentGameType(),
       worldId: selectedPlanetId,
+      sound: soundChoice(),
     });
     sync.send({ type: "command", action: "play" });
     // Resend play a couple times in case the TV is mid-switch between games
@@ -1235,6 +1348,7 @@
     showScreen("connect");
   });
   document.getElementById("btn-howto-next").addEventListener("click", () => {
+    unlockTabletHit();
     if (currentGameType() === "orbit" && howtoPage < 1) {
       howtoPage += 1;
       renderHowTo();
@@ -1285,6 +1399,27 @@
     else hidePlanetModal();
   });
   document.getElementById("planet-modal-backdrop").addEventListener("click", hidePlanetModal);
+  document.getElementById("planet-modal").addEventListener("keydown", (event) => {
+    const modal = document.getElementById("planet-modal");
+    if (modal.hidden) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      hidePlanetModal();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const items = modalButtons();
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
 
   routeFromAuth();
 })();

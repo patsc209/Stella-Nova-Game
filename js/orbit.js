@@ -193,6 +193,20 @@ function publishOrbitState() {
     playMode,
     countdown: gameState === "countdown" ? Math.max(1, 3 - Math.floor((millis() - stateStartTime) / COUNTDOWN_STEP_MS)) : 3,
   });
+  announceTvStatus();
+}
+
+function announceTvStatus() {
+  const el = document.getElementById("tv-live");
+  if (!el) return;
+  let text = "Orbit Rally. ";
+  if (uiPhase === "lobby") text += "Waiting to start.";
+  else if (uiPhase === "countdown") text += "Get ready.";
+  else if (uiPhase === "playing") text += "Blue " + scoreA + ", pink " + scoreB + ". " + timeLeft + " seconds left.";
+  else if (uiPhase === "paused") text += "Paused. Blue " + scoreA + ", pink " + scoreB + ". " + timeLeft + " seconds left.";
+  else if (uiPhase === "over") text += "Round over. Blue " + scoreA + ", pink " + scoreB + ".";
+  if (el.textContent === text) return;
+  el.textContent = text;
 }
 
 function handleCommand(action) {
@@ -675,6 +689,7 @@ function drawAlienPaddle(x, y, hue, tag) {
 
 // ---- Goal celebration particles ----
 function spawnParticles(x, y, hue) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   colorMode(HSB, 360, 100, 100, 255);
   for (let i = 0; i < 16; i++) {
     let angle = random(TWO_PI);
