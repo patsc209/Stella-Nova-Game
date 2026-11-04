@@ -975,7 +975,6 @@
   });
 
   function unlockTabletHit() {
-    if (soundChoice() === "off") return;
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     if (!hitAudio) hitAudio = new AC();
@@ -983,7 +982,6 @@
   }
 
   function playTabletHit() {
-    if (soundChoice() === "off") return;
     unlockTabletHit();
     if (!hitAudio) return;
     if (hitAudio.state !== "running") {
@@ -1023,35 +1021,7 @@
     osc.stop(t + 0.18);
   }
 
-  function soundChoice() {
-    try {
-      return localStorage.getItem("stella-nova:sound") === "off" ? "off" : "on";
-    } catch (_) {
-      return "on";
-    }
-  }
-
-  function renderSound() {
-    const on = soundChoice() === "on";
-    const btn = document.getElementById("btn-sound");
-    const label = document.getElementById("sound-label");
-    if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
-    if (label) label.textContent = on ? "On" : "Off";
-  }
-
-  document.getElementById("btn-sound").addEventListener("click", () => {
-    const next = soundChoice() === "on" ? "off" : "on";
-    try {
-      localStorage.setItem("stella-nova:sound", next);
-    } catch (_) {
-      /* the button still updates for this visit */
-    }
-    renderSound();
-    if (next === "on") playTabletHit();
-    if (sync) sync.publish({ sound: next });
-  });
   window.addEventListener("pointerdown", unlockTabletHit);
-  renderSound();
 
   document.getElementById("btn-logout").addEventListener("click", () => {
     Auth.logout();
@@ -1296,7 +1266,6 @@
       playMode: selectedPlayMode,
       gameType: (PLANETS.find((p) => p.id === selectedPlanetId) || {}).gameType || "stars",
       worldId: selectedPlanetId,
-      sound: soundChoice(),
     });
     sync.on((msg) => {
       if (msg.type === "state" && msg.state) applyState(msg.state);
@@ -1320,7 +1289,6 @@
       playMode: selectedPlayMode,
       gameType: currentGameType(),
       worldId: selectedPlanetId,
-      sound: soundChoice(),
     });
     sync.send({ type: "command", action: "play" });
     // Resend play a couple times in case the TV is mid-switch between games

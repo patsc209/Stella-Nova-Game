@@ -118,7 +118,6 @@ function initRoomAndSync() {
 
   const existing = PlanetHockeySync.loadState(roomCode);
   if (existing && existing.bestScore) bestScore = existing.bestScore;
-  if (existing && existing.sound) applySoundPref(existing.sound);
 
   sync = PlanetHockeySync.createSync(roomCode, "game");
   sync.publish({
@@ -137,7 +136,6 @@ function initRoomAndSync() {
     if (msg.type === "hello" && msg.role === "tablet") sync.publish({ hostReady: true });
     if (msg.type === "state" && msg.from === "tablet" && msg.state) {
       if (msg.state.playerName) playerName = msg.state.playerName;
-      if (msg.state.sound) applySoundPref(msg.state.sound);
       if (msg.state.gameType === "stars" || msg.state.gameType === "orbit") {
         tabletGameType = msg.state.gameType;
       }
@@ -499,27 +497,6 @@ function distToSegment(px, py, x1, y1, x2, y2) {
 
 let starAudio = null;
 let starNoise = null;
-let starSoundOn = true;
-
-function applySoundPref(value) {
-  if (value !== "on" && value !== "off") return;
-  starSoundOn = value !== "off";
-  try {
-    localStorage.setItem("stella-nova:sound", value);
-  } catch (_) {
-    /* a blocked store just keeps the choice for this page */
-  }
-}
-
-try {
-  applySoundPref(localStorage.getItem("stella-nova:sound") === "off" ? "off" : "on");
-} catch (_) {
-  starSoundOn = true;
-}
-
-window.addEventListener("storage", (event) => {
-  if (event.key === "stella-nova:sound") applySoundPref(event.newValue);
-});
 
 function unlockStarSound() {
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -529,7 +506,6 @@ function unlockStarSound() {
 }
 
 function playStarHit() {
-  if (!starSoundOn) return;
   unlockStarSound();
   if (!starAudio) return;
   if (starAudio.state !== "running") {
